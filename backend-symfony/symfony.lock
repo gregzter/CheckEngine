@@ -1,0 +1,11 @@
+{
+    "content-hash": "checkengine-backend",
+    "runtime": {
+        "fragment/runtime": {
+            "version": "7.3",
+            "recipe": {
+                "auto-generated": true
+            }
+        }
+    }
+}

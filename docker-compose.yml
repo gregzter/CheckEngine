@@ -26,8 +26,8 @@ services:
   # ===== PYTHON ANALYTICS API =====
   python-api:
     build:
-      context: ./docker/python
-      dockerfile: Dockerfile
+      context: ./backend-python
+      dockerfile: ../docker/python/Dockerfile
     container_name: checkengine-python-api
     working_dir: /app
     volumes:

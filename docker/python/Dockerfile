@@ -18,8 +18,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Note: Application code will be mounted via volume in docker-compose.yml
 
 EXPOSE 8001
 

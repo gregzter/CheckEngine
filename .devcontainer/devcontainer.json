@@ -10,6 +10,13 @@
     "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
   ],
 
+  "containerEnv": {
+    "GIT_AUTHOR_NAME": "${localEnv:USERNAME}",
+    "GIT_AUTHOR_EMAIL": "${localEnv:EMAIL}",
+    "GIT_COMMITTER_NAME": "${localEnv:USERNAME}",
+    "GIT_COMMITTER_EMAIL": "${localEnv:EMAIL}"
+  },
+
   "customizations": {
     "vscode": {
       "extensions": [
@@ -86,10 +93,5 @@
     }
   },
 
-  "postCreateCommand": "echo '🚀 DevContainer ready! Run: make install' && composer install -d /workspace/backend-symfony && pip install -r /workspace/backend-python/requirements.txt",
-
-  "features": {
-    "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {}
-  }
+  "postCreateCommand": "/bin/bash /workspace/.devcontainer/post-create.sh"
 }
