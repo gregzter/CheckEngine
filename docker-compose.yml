@@ -96,6 +96,17 @@ services:
       - checkengine-network
     command: npm run dev -- --host 0.0.0.0
 
+  # ===== MAILPIT (Email Testing) =====
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: checkengine-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"  # Interface web
+      - "1025:1025"  # SMTP
+    networks:
+      - checkengine-network
+
 networks:
   checkengine-network:
     driver: bridge
