@@ -73,7 +73,7 @@ class ForgotPasswordController extends AbstractController
         $response = [
             'message' => 'If this email exists, a password reset link has been sent'
         ];
-        
+
         if ($this->getParameter('kernel.environment') === 'dev') {
             $response['debug'] = [
                 'token' => $resetToken,
