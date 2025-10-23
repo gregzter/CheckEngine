@@ -50,35 +50,35 @@ final class Version20251023151523 extends AbstractMigration
         $this->addSql('DROP TABLE trip_metrics');
         $this->addSql('DROP TABLE trips');
         $this->addSql('DROP TABLE vehicles');
-        
+
         // Insert Toyota Prius+ fixture
         $this->addSql("
             INSERT INTO vehicle_model (
-                manufacturer, 
-                model, 
-                year_start, 
-                year_end, 
-                generation, 
-                engine_code, 
-                displacement, 
-                fuel_type, 
-                horse_power, 
-                electric_motor_power, 
-                is_hybrid, 
-                supported_pids, 
+                manufacturer,
+                model,
+                year_start,
+                year_end,
+                generation,
+                engine_code,
+                displacement,
+                fuel_type,
+                horse_power,
+                electric_motor_power,
+                is_hybrid,
+                supported_pids,
                 specifications
             ) VALUES (
-                'Toyota', 
-                'Prius+', 
-                2012, 
-                2021, 
-                'XW40', 
-                '2ZR-FXE', 
-                1.8, 
-                'Hybrid Petrol', 
-                99, 
-                82, 
-                true, 
+                'Toyota',
+                'Prius+',
+                2012,
+                2021,
+                'XW40',
+                '2ZR-FXE',
+                1.8,
+                'Hybrid Petrol',
+                99,
+                82,
+                true,
                 '[
                     \"010C\",
                     \"010D\",

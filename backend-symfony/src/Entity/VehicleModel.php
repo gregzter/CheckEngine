@@ -260,9 +260,10 @@ class VehicleModel
 
     public function __toString(): string
     {
-        return sprintf('%s %s (%d-%s)', 
-            $this->manufacturer, 
-            $this->model, 
+        return sprintf(
+            '%s %s (%d-%s)',
+            $this->manufacturer,
+            $this->model,
             $this->yearStart,
             $this->yearEnd ? $this->yearEnd : 'present'
         );
