@@ -2,17 +2,17 @@
 
 namespace App\Repository;
 
-use App\Entity\DataPoint;
+use App\Entity\Trip;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<DataPoint>
+ * @extends ServiceEntityRepository<Trip>
  */
-class DataPointRepository extends ServiceEntityRepository
+class TripRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, DataPoint::class);
+        parent::__construct($registry, Trip::class);
     }
 }

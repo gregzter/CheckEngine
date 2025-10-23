@@ -46,14 +46,14 @@ class Vehicle
     private ?\DateTimeImmutable $createdAt = null;
 
     /**
-     * @var Collection<int, LogSession>
+     * @var Collection<int, Trip>
      */
-    #[ORM\OneToMany(targetEntity: LogSession::class, mappedBy: 'vehicle', orphanRemoval: true)]
-    private Collection $logSessions;
+    #[ORM\OneToMany(targetEntity: Trip::class, mappedBy: 'vehicle', orphanRemoval: true)]
+    private Collection $trips;
 
     public function __construct()
     {
-        $this->logSessions = new ArrayCollection();
+        $this->trips = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
     }
 
@@ -171,28 +171,28 @@ class Vehicle
     }
 
     /**
-     * @return Collection<int, LogSession>
+     * @return Collection<int, Trip>
      */
-    public function getLogSessions(): Collection
+    public function getTrips(): Collection
     {
-        return $this->logSessions;
+        return $this->trips;
     }
 
-    public function addLogSession(LogSession $logSession): static
+    public function addTrip(Trip $trip): static
     {
-        if (!$this->logSessions->contains($logSession)) {
-            $this->logSessions->add($logSession);
-            $logSession->setVehicle($this);
+        if (!$this->trips->contains($trip)) {
+            $this->trips->add($trip);
+            $trip->setVehicle($this);
         }
 
         return $this;
     }
 
-    public function removeLogSession(LogSession $logSession): static
+    public function removeTrip(Trip $trip): static
     {
-        if ($this->logSessions->removeElement($logSession)) {
-            if ($logSession->getVehicle() === $this) {
-                $logSession->setVehicle(null);
+        if ($this->trips->removeElement($trip)) {
+            if ($trip->getVehicle() === $this) {
+                $trip->setVehicle(null);
             }
         }
 

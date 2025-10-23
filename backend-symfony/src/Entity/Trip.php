@@ -2,23 +2,21 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Metadata\ApiResource;
-use App\Repository\LogSessionRepository;
+use App\Repository\TripRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: LogSessionRepository::class)]
-#[ApiResource]
-class LogSession
+#[ORM\Entity(repositoryClass: TripRepository::class)]
+class Trip
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'logSessions')]
+    #[ORM\ManyToOne(inversedBy: 'trips')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Vehicle $vehicle = null;
 
@@ -62,9 +60,9 @@ class LogSession
     private ?\DateTimeImmutable $analyzedAt = null;
 
     /**
-     * @var Collection<int, DataPoint>
+     * @var Collection<int, TripData>
      */
-    #[ORM\OneToMany(targetEntity: DataPoint::class, mappedBy: 'logSession', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: TripData::class, mappedBy: 'trip', orphanRemoval: true)]
     private Collection $dataPoints;
 
     public function __construct()
@@ -248,28 +246,28 @@ class LogSession
     }
 
     /**
-     * @return Collection<int, DataPoint>
+     * @return Collection<int, TripData>
      */
     public function getDataPoints(): Collection
     {
         return $this->dataPoints;
     }
 
-    public function addDataPoint(DataPoint $dataPoint): static
+    public function addDataPoint(TripData $dataPoint): static
     {
         if (!$this->dataPoints->contains($dataPoint)) {
             $this->dataPoints->add($dataPoint);
-            $dataPoint->setLogSession($this);
+            $dataPoint->setTrip($this);
         }
 
         return $this;
     }
 
-    public function removeDataPoint(DataPoint $dataPoint): static
+    public function removeDataPoint(TripData $dataPoint): static
     {
         if ($this->dataPoints->removeElement($dataPoint)) {
-            if ($dataPoint->getLogSession() === $this) {
-                $dataPoint->setLogSession(null);
+            if ($dataPoint->getTrip() === $this) {
+                $dataPoint->setTrip(null);
             }
         }
 

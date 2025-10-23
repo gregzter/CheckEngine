@@ -2,16 +2,14 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Metadata\ApiResource;
-use App\Repository\DataPointRepository;
+use App\Repository\TripDataRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: DataPointRepository::class)]
+#[ORM\Entity(repositoryClass: TripDataRepository::class)]
 #[ORM\Index(columns: ['timestamp'], name: 'idx_timestamp')]
 #[ORM\Index(columns: ['pid_name'], name: 'idx_pid_name')]
-#[ApiResource]
-class DataPoint
+class TripData
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -20,7 +18,7 @@ class DataPoint
 
     #[ORM\ManyToOne(inversedBy: 'dataPoints')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?LogSession $logSession = null;
+    private ?Trip $trip = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $timestamp = null;
@@ -39,14 +37,14 @@ class DataPoint
         return $this->id;
     }
 
-    public function getLogSession(): ?LogSession
+    public function getTrip(): ?Trip
     {
-        return $this->logSession;
+        return $this->trip;
     }
 
-    public function setLogSession(?LogSession $logSession): static
+    public function setTrip(?Trip $trip): static
     {
-        $this->logSession = $logSession;
+        $this->trip = $trip;
 
         return $this;
     }

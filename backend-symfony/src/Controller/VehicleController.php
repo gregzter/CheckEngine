@@ -155,7 +155,7 @@ class VehicleController extends AbstractController
                 'year_end' => $vehicle->getModel()->getYearEnd(),
                 'engine_code' => $vehicle->getModel()->getEngineCode(),
             ],
-            'sessions_count' => $vehicle->getLogSessions()->count()
+            'trips_count' => $vehicle->getTrips()->count()
         ]);
     }
 
