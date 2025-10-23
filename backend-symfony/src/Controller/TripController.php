@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Trip;
 use App\Entity\Vehicle;
 use App\Entity\User;
+use App\Service\TripProcessingService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -16,8 +17,10 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api')]
 class TripController extends AbstractController
 {
-    public function __construct(private Security $security)
-    {
+    public function __construct(
+        private Security $security,
+        private TripProcessingService $tripProcessingService
+    ) {
     }
 
     #[Route('/vehicles/{vehicleId}/trips/upload', name: 'api_trips_upload', methods: ['POST'])]
@@ -92,21 +95,52 @@ class TripController extends AbstractController
         $trip->setFilename($newFilename);
         $trip->setFilePath($uploadsDir . '/' . $newFilename);
         $trip->setSessionDate(new \DateTimeImmutable());
-        $trip->setStatus('pending');
+        $trip->setStatus('processing');
 
         $entityManager->persist($trip);
         $entityManager->flush();
 
-        return new JsonResponse([
-            'message' => 'Trip uploaded successfully',
-            'trip' => [
-                'id' => $trip->getId(),
-                'filename' => $trip->getFilename(),
-                'status' => $trip->getStatus(),
-                'uploaded_at' => $trip->getUploadedAt()->format('Y-m-d H:i:s'),
-                'vehicle_id' => $vehicle->getId()
-            ]
-        ], 201);
+        // Décompresser et analyser le fichier en arrière-plan
+        try {
+            $metadata = $this->tripProcessingService->processTrip($trip);
+            
+            // Mettre à jour le statut
+            $trip->setStatus('ready');
+            $entityManager->flush();
+
+            return new JsonResponse([
+                'message' => 'Trip uploaded and processed successfully',
+                'trip' => [
+                    'id' => $trip->getId(),
+                    'filename' => $trip->getFilename(),
+                    'status' => $trip->getStatus(),
+                    'session_date' => $trip->getSessionDate()->format('Y-m-d H:i:s'),
+                    'duration' => $trip->getDuration(),
+                    'data_points_count' => $trip->getDataPointsCount(),
+                    'uploaded_at' => $trip->getUploadedAt()->format('Y-m-d H:i:s'),
+                    'vehicle_id' => $vehicle->getId()
+                ],
+                'metadata' => [
+                    'columns' => count($metadata['columns']),
+                    'file_size' => $metadata['file_size']
+                ]
+            ], 201);
+        } catch (\Exception $e) {
+            $trip->setStatus('error');
+            $entityManager->flush();
+
+            return new JsonResponse([
+                'message' => 'Trip uploaded but processing failed',
+                'trip' => [
+                    'id' => $trip->getId(),
+                    'filename' => $trip->getFilename(),
+                    'status' => $trip->getStatus(),
+                    'uploaded_at' => $trip->getUploadedAt()->format('Y-m-d H:i:s'),
+                    'vehicle_id' => $vehicle->getId()
+                ],
+                'error' => $e->getMessage()
+            ], 201);
+        }
     }
 
     #[Route('/trips', name: 'api_trips_list', methods: ['GET'])]
@@ -211,5 +245,59 @@ class TripController extends AbstractController
         $entityManager->flush();
 
         return new JsonResponse(['message' => 'Trip deleted successfully']);
+    }
+
+    #[Route('/trips/{id}/process', name: 'api_trips_process', methods: ['POST'])]
+    public function process(int $id, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $user = $this->security->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse(['error' => 'Authentication required'], 401);
+        }
+
+        $trip = $entityManager->getRepository(Trip::class)->find($id);
+        if (!$trip) {
+            return new JsonResponse(['error' => 'Trip not found'], 404);
+        }
+
+        // Vérifier que le trip appartient à un véhicule de l'utilisateur
+        if ($trip->getVehicle()->getOwner()->getId() !== $user->getId()) {
+            return new JsonResponse(['error' => 'Access denied'], 403);
+        }
+
+        // Retraiter le trip
+        try {
+            $trip->setStatus('processing');
+            $entityManager->flush();
+
+            $metadata = $this->tripProcessingService->processTrip($trip);
+            
+            $trip->setStatus('ready');
+            $entityManager->flush();
+
+            return new JsonResponse([
+                'message' => 'Trip processed successfully',
+                'trip' => [
+                    'id' => $trip->getId(),
+                    'status' => $trip->getStatus(),
+                    'session_date' => $trip->getSessionDate()->format('Y-m-d H:i:s'),
+                    'duration' => $trip->getDuration(),
+                    'data_points_count' => $trip->getDataPointsCount()
+                ],
+                'metadata' => [
+                    'columns' => count($metadata['columns']),
+                    'data_rows' => $metadata['data_row_count'],
+                    'file_size' => $metadata['file_size']
+                ]
+            ]);
+        } catch (\Exception $e) {
+            $trip->setStatus('error');
+            $entityManager->flush();
+
+            return new JsonResponse([
+                'error' => 'Processing failed',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }
