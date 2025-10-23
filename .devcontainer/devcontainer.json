@@ -1,0 +1,95 @@
+{
+  "name": "CheckEngine Development",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "symfony",
+  "workspaceFolder": "/workspace",
+  
+  "remoteUser": "www-data",
+  
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+  ],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // PHP & Symfony
+        "bmewburn.vscode-intelephense-client",
+        "whatwedo.twig",
+        "TheNouillet.symfony-vscode",
+        
+        // Python
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        
+        // Vue.js
+        "Vue.volar",
+        "Vue.vscode-typescript-vue-plugin",
+        
+        // Docker
+        "ms-azuretools.vscode-docker",
+        
+        // Git
+        "mhutchie.git-graph",
+        
+        // Utilities
+        "editorconfig.editorconfig",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint"
+      ],
+      
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "php.validate.executablePath": "/usr/local/bin/php",
+        "intelephense.environment.phpVersion": "8.3",
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.analysis.typeCheckingMode": "basic",
+        "[php]": {
+          "editor.defaultFormatter": "bmewburn.vscode-intelephense-client",
+          "editor.formatOnSave": true
+        },
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.python",
+          "editor.formatOnSave": true
+        },
+        "[vue]": {
+          "editor.defaultFormatter": "Vue.volar"
+        }
+      }
+    }
+  },
+
+  "forwardPorts": [
+    8000,  // Symfony
+    8001,  // Python API
+    5173,  // Vue.js Dev
+    5432,  // PostgreSQL
+    8080   // Adminer
+  ],
+
+  "portsAttributes": {
+    "8000": {
+      "label": "Symfony Backend",
+      "onAutoForward": "notify"
+    },
+    "8001": {
+      "label": "Python Analytics API",
+      "onAutoForward": "notify"
+    },
+    "5173": {
+      "label": "Vue.js Frontend",
+      "onAutoForward": "openBrowser"
+    },
+    "8080": {
+      "label": "Adminer (Database UI)",
+      "onAutoForward": "ignore"
+    }
+  },
+
+  "postCreateCommand": "echo '🚀 DevContainer ready! Run: make install' && composer install -d /workspace/backend-symfony && pip install -r /workspace/backend-python/requirements.txt",
+
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  }
+}

@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # ===== SYMFONY BACKEND =====
+  symfony:
+    build:
+      context: ./docker/symfony
+      dockerfile: Dockerfile
+    container_name: checkengine-symfony
+    working_dir: /var/www/symfony
+    volumes:
+      - ./backend-symfony:/var/www/symfony
+      - symfony-vendor:/var/www/symfony/vendor
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/checkengine?serverVersion=17&charset=utf8"
+      PYTHON_API_URL: "http://python-api:8001"
+    depends_on:
+      - postgres
+      - python-api
+    networks:
+      - checkengine-network
+    command: symfony server:start --no-tls --port=8000 --allow-http
+
+  # ===== PYTHON ANALYTICS API =====
+  python-api:
+    build:
+      context: ./docker/python
+      dockerfile: Dockerfile
+    container_name: checkengine-python-api
+    working_dir: /app
+    volumes:
+      - ./backend-python:/app
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/checkengine"
+    depends_on:
+      - postgres
+    networks:
+      - checkengine-network
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+
+  # ===== POSTGRESQL 17 =====
+  postgres:
+    image: postgres:17-alpine
+    container_name: checkengine-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: checkengine
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - checkengine-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===== ADMINER (Database Management) =====
+  adminer:
+    image: adminer:latest
+    container_name: checkengine-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+    networks:
+      - checkengine-network
+
+  # ===== VUE.JS FRONTEND (Dev) =====
+  frontend:
+    build:
+      context: ./docker/frontend
+      dockerfile: Dockerfile
+    container_name: checkengine-frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: "http://localhost:8000"
+    networks:
+      - checkengine-network
+    command: npm run dev -- --host 0.0.0.0
+
+networks:
+  checkengine-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  symfony-vendor:
+  frontend-node-modules:

@@ -1,0 +1,28 @@
+# ===================================
+# PYTHON ANALYTICS API - Requirements
+# Python 3.12
+# ===================================
+
+# FastAPI framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Database
+asyncpg==0.29.0
+sqlalchemy[asyncio]==2.0.25
+psycopg2-binary==2.9.9
+
+# Data processing (from our existing work)
+pandas==2.2.0
+numpy==1.26.3
+scipy==1.12.0
+
+# Utilities
+python-multipart==0.0.6  # For file uploads
+aiofiles==23.2.1
+python-dateutil==2.8.2
+
+# Optional: For future IA integration
+# anthropic==0.18.0

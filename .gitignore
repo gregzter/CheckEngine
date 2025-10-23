@@ -1,0 +1,66 @@
+# ===================================
+# PRIUS+ DIAGNOSTIC - .gitignore
+# ===================================
+
+# ===== SYMFONY BACKEND =====
+/backend-symfony/var/
+/backend-symfony/vendor/
+/backend-symfony/.env.local
+/backend-symfony/.env.local.php
+/backend-symfony/.env.*.local
+/backend-symfony/public/bundles/
+/backend-symfony/public/uploads/
+
+# ===== PYTHON BACKEND =====
+/backend-python/__pycache__/
+/backend-python/*.py[cod]
+/backend-python/*$py.class
+/backend-python/.pytest_cache/
+/backend-python/.mypy_cache/
+/backend-python/venv/
+/backend-python/.venv/
+/backend-python/*.egg-info/
+
+# ===== FRONTEND =====
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.nuxt/
+/frontend/.output/
+/frontend/.env.local
+
+# ===== DONNÉES =====
+*.csv
+*.zip
+*.log
+/data/uploads/*
+!/data/uploads/.gitkeep
+/logs/
+
+# ===== DOCKER =====
+/docker/postgres/data/
+.docker-sync/
+
+# ===== IDE =====
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== ARCHIVES & TEMP =====
+/archive/
+*.tmp
+*.bak
+
+# ===== GRAPHIQUES GÉNÉRÉS =====
+*.png
+*.pdf
+!/docs/**/*.png
+!/docs/**/*.pdf
