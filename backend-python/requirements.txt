@@ -20,7 +20,7 @@ numpy==1.26.3
 scipy==1.12.0
 
 # Utilities
-python-multipart==0.0.6  # For file uploads
+python-multipart==0.0.20  # For file uploads
 aiofiles==23.2.1
 python-dateutil==2.8.2
 
