@@ -8,6 +8,7 @@ use App\Message\ParseCsvMessage;
 use App\Service\OBD2CsvParser;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+
 // use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 // TODO: Installer symfony/messenger pour activer cette fonctionnalité
@@ -19,14 +20,15 @@ class ParseCsvHandler
         private readonly EntityManagerInterface $em,
         private readonly LoggerInterface $logger,
         private readonly string $uploadDir
-    ) {}
+    ) {
+    }
 
     public function __invoke(ParseCsvMessage $message): void
     {
         $filename = $message->getFilename();
-        $filepath = $this->uploadDir . '/' . $filename;
+        $filepath = $this->uploadDir.'/'.$filename;
 
-        $this->logger->info("Starting async CSV parsing", [
+        $this->logger->info('Starting async CSV parsing', [
             'filename' => $filename,
             'user_id' => $message->getUserId(),
             'vehicle_id' => $message->getVehicleId(),
@@ -50,7 +52,7 @@ class ParseCsvHandler
             // Parse CSV
             $trip = $this->parser->parseAndStore($filepath, $user, $vehicle);
 
-            $this->logger->info("Async CSV parsing completed", [
+            $this->logger->info('Async CSV parsing completed', [
                 'trip_id' => $trip->getId(),
                 'status' => $trip->getStatus(),
                 'data_points' => $trip->getDataPointsCount(),
@@ -60,7 +62,7 @@ class ParseCsvHandler
             // Example: $this->notificationService->notifyTripCompleted($user, $trip);
 
         } catch (\Exception $e) {
-            $this->logger->error("Async CSV parsing failed", [
+            $this->logger->error('Async CSV parsing failed', [
                 'filename' => $filename,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -74,7 +76,7 @@ class ParseCsvHandler
             // Cleanup: delete uploaded file after processing
             if (file_exists($filepath)) {
                 @unlink($filepath);
-                $this->logger->info("Uploaded file deleted", ['filename' => $filename]);
+                $this->logger->info('Uploaded file deleted', ['filename' => $filename]);
             }
         }
     }
