@@ -9,7 +9,7 @@ class TripProcessingService
 {
     /**
      * Décompresse un fichier ZIP Torque Pro et retourne le chemin du CSV extrait
-     * 
+     *
      * @param Trip $trip L'entité Trip contenant le chemin du fichier ZIP
      * @return string|null Le chemin du fichier CSV extrait, ou null en cas d'erreur
      * @throws \Exception Si le ZIP ne peut pas être ouvert ou ne contient pas de CSV
@@ -17,13 +17,13 @@ class TripProcessingService
     public function extractCsvFromZip(Trip $trip): ?string
     {
         $zipPath = $trip->getFilePath();
-        
+
         if (!file_exists($zipPath)) {
             throw new \Exception("ZIP file not found: {$zipPath}");
         }
 
         $zip = new ZipArchive();
-        
+
         if ($zip->open($zipPath) !== true) {
             throw new \Exception("Cannot open ZIP file: {$zipPath}");
         }
@@ -40,7 +40,7 @@ class TripProcessingService
 
         // Chercher le fichier CSV (généralement dans data/trackLog-*.csv)
         $csvPath = $this->findCsvFile($extractDir);
-        
+
         if (!$csvPath) {
             // Nettoyer le répertoire d'extraction
             $this->removeDirectory($extractDir);
@@ -52,7 +52,7 @@ class TripProcessingService
 
     /**
      * Recherche récursive du fichier CSV dans le répertoire extrait
-     * 
+     *
      * @param string $directory Le répertoire à explorer
      * @return string|null Le chemin complet du fichier CSV trouvé
      */
@@ -76,7 +76,7 @@ class TripProcessingService
 
     /**
      * Analyse les métadonnées de base du fichier CSV
-     * 
+     *
      * @param string $csvPath Chemin vers le fichier CSV
      * @return array Métadonnées du trajet (nombre de lignes, colonnes, etc.)
      */
@@ -87,24 +87,24 @@ class TripProcessingService
         }
 
         $file = fopen($csvPath, 'r');
-        
+
         // Lire l'en-tête
         $header = fgetcsv($file);
         $columnCount = count($header);
-        
+
         // Compter les lignes de données
         $dataRowCount = 0;
         while (fgetcsv($file) !== false) {
             $dataRowCount++;
         }
-        
+
         fclose($file);
 
         // Lire la première et dernière ligne pour les timestamps
         $file = fopen($csvPath, 'r');
         fgetcsv($file); // Skip header
         $firstRow = fgetcsv($file);
-        
+
         // Aller à la dernière ligne
         $lastRow = null;
         while (($row = fgetcsv($file)) !== false) {
@@ -122,7 +122,7 @@ class TripProcessingService
                 // Parser le format: "Thu Oct 23 12:00:11 GMT+02:00 2025"
                 $startTime = $this->parseGpsTime($firstRow[0]);
                 $endTime = $this->parseGpsTime($lastRow[0]);
-                
+
                 if ($startTime && $endTime) {
                     $duration = $endTime->getTimestamp() - $startTime->getTimestamp();
                 }
@@ -145,7 +145,7 @@ class TripProcessingService
     /**
      * Parse le format de timestamp GPS de Torque Pro
      * Format: "Thu Oct 23 12:00:11 GMT+02:00 2025"
-     * 
+     *
      * @param string $gpsTime Le timestamp GPS
      * @return \DateTimeImmutable|null
      */
@@ -160,7 +160,7 @@ class TripProcessingService
 
     /**
      * Nettoie le répertoire d'extraction après traitement
-     * 
+     *
      * @param string $extractDir Le répertoire à supprimer
      */
     public function cleanupExtractedFiles(string $extractDir): void
@@ -172,7 +172,7 @@ class TripProcessingService
 
     /**
      * Supprime récursivement un répertoire et son contenu
-     * 
+     *
      * @param string $dir Le répertoire à supprimer
      */
     private function removeDirectory(string $dir): void
@@ -200,7 +200,7 @@ class TripProcessingService
 
     /**
      * Traitement complet d'un trip: extraction + analyse
-     * 
+     *
      * @param Trip $trip L'entité Trip à traiter
      * @return array Les métadonnées extraites
      */

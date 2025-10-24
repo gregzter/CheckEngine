@@ -20,8 +20,7 @@ class TripController extends AbstractController
     public function __construct(
         private Security $security,
         private TripProcessingService $tripProcessingService
-    ) {
-    }
+    ) {}
 
     #[Route('/vehicles/{vehicleId}/trips/upload', name: 'api_trips_upload', methods: ['POST'])]
     public function upload(
@@ -103,7 +102,7 @@ class TripController extends AbstractController
         // Décompresser et analyser le fichier en arrière-plan
         try {
             $metadata = $this->tripProcessingService->processTrip($trip);
-            
+
             // Mettre à jour le statut
             $trip->setStatus('ready');
             $entityManager->flush();
@@ -153,7 +152,7 @@ class TripController extends AbstractController
 
         // Récupérer tous les véhicules de l'utilisateur
         $vehicles = $entityManager->getRepository(Vehicle::class)->findBy(['owner' => $user]);
-        
+
         // Récupérer tous les trips de ces véhicules
         $allTrips = [];
         foreach ($vehicles as $vehicle) {
@@ -271,7 +270,7 @@ class TripController extends AbstractController
             $entityManager->flush();
 
             $metadata = $this->tripProcessingService->processTrip($trip);
-            
+
             $trip->setStatus('ready');
             $entityManager->flush();
 

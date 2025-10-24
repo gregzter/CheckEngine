@@ -1,0 +1,202 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Démonstration complète de l'analyse de colonnes OBD2 (Version 2.0 - BDD)
+ * - Mapping des colonnes (depuis base de données)
+ * - Validation des données
+ * - Détection de doublons
+ * - Vérification de corrélation
+ * - Sélection de la meilleure source
+ */
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use App\Kernel;
+use Symfony\Component\Dotenv\Dotenv;
+
+// Charger les variables d'environnement
+(new Dotenv())->bootEnv(__DIR__ . '/../.env');
+
+// Démarrer le kernel Symfony
+$kernel = new Kernel($_ENV['APP_ENV'] ?? 'dev', (bool) ($_ENV['APP_DEBUG'] ?? true));
+$kernel->boot();
+$container = $kernel->getContainer();
+
+// Récupérer les services depuis le container
+$mapper = $container->get('App\Service\OBD2ColumnMapper');
+$detector = $container->get('App\Service\DiagnosticDetector');
+
+// Chemin du fichier CSV d'exemple (peut être passé en argument)
+$csvPath = $argv[1] ?? __DIR__ . '/../var/tmp/data/trackLog-2025-oct.-23_12-00-00.csv';
+
+if (!file_exists($csvPath)) {
+    echo "❌ Fichier CSV non trouvé: $csvPath\n";
+    exit(1);
+}
+
+echo "╔══════════════════════════════════════════════════════════════╗\n";
+echo "║   ANALYSE COMPLÈTE DES DONNÉES OBD2 - Torque Pro            ║\n";
+echo "╚══════════════════════════════════════════════════════════════╝\n\n";
+
+// Lecture du CSV complet
+$handle = fopen($csvPath, 'r');
+$csvHeaders = fgetcsv($handle);
+
+// Charger toutes les données en mémoire pour validation
+$columnsData = array_fill(0, count($csvHeaders), []);
+while (($row = fgetcsv($handle)) !== false) {
+    foreach ($row as $idx => $value) {
+        $columnsData[$idx][] = $value;
+    }
+}
+fclose($handle);
+
+echo "📊 ÉTAPE 1: MAPPING DES COLONNES\n";
+echo "═══════════════════════════════════\n\n";
+
+$mapping = $mapper->mapCsvHeaders($csvHeaders);
+$stats = $mapper->getMappingStats($csvHeaders);
+
+echo "Total colonnes CSV: {$stats['total_columns']}\n";
+echo "Colonnes reconnues: {$stats['mapped_columns']}\n";
+echo "Taux reconnaissance: {$stats['mapping_rate']}%\n";
+echo "Sources multiples: {$stats['duplicate_sources']}\n\n";
+
+// Afficher les doublons détectés
+if (!empty($mapping['duplicates'])) {
+    echo "🔄 DOUBLONS DÉTECTÉS\n";
+    foreach ($mapping['duplicates'] as $dbName => $sources) {
+        echo "\n📌 $dbName (" . count($sources) . " sources):\n";
+        foreach ($sources as $source) {
+            $csvCol = $source['csv_column'];
+            $priority = $source['priority'];
+            $index = $source['index'];
+            echo "   • [$priority] $csvCol (col $index)\n";
+        }
+    }
+    echo "\n";
+}
+
+echo "\n📊 ÉTAPE 2: VALIDATION DES DONNÉES\n";
+echo "═══════════════════════════════════\n\n";
+
+// Valider chaque colonne mappée
+$validatedColumns = [];
+foreach ($mapping['mapped'] as $dbName => $columnInfo) {
+    $index = $columnInfo['index'];
+    $data = $columnsData[$index];
+
+    $validation = $detector->validateColumnData($data, $dbName);
+
+    $validatedColumns[$dbName] = [
+        'csv_column' => $columnInfo['csv_column'],
+        'index' => $index,
+        'validation' => $validation,
+        'data' => $data
+    ];
+}
+
+// Afficher statistiques de validation
+$validColumns = array_filter($validatedColumns, fn($col) => $col['validation']['valid']);
+$invalidColumns = array_filter($validatedColumns, fn($col) => !$col['validation']['valid']);
+
+echo "✅ Colonnes VALIDES: " . count($validColumns) . "\n";
+echo "❌ Colonnes INVALIDES: " . count($invalidColumns) . "\n\n";
+
+if (!empty($invalidColumns)) {
+    echo "⚠️  COLONNES INVALIDES (données inutilisables):\n\n";
+    foreach ($invalidColumns as $dbName => $col) {
+        $stats = $col['validation']['stats'];
+        $reason = $col['validation']['reason'];
+        echo "   ❌ $dbName\n";
+        echo "      Colonne CSV: {$col['csv_column']}\n";
+        echo "      Raison: $reason\n";
+        echo "      Données valides: {$stats['valid_rate']}%\n";
+        echo "      Valeurs d'erreur: {$stats['error_value_count']}\n";
+        echo "      Valeurs nulles: {$stats['null_count']}\n\n";
+    }
+}
+
+echo "\n📊 ÉTAPE 3: GESTION DES DOUBLONS\n";
+echo "═══════════════════════════════════\n\n";
+
+if (!empty($mapping['duplicates'])) {
+    foreach ($mapping['duplicates'] as $dbName => $sources) {
+        echo "🔍 Analyse de '$dbName':\n\n";
+
+        // Préparer les données pour selectBestColumn
+        $duplicatesData = [];
+        foreach ($sources as $source) {
+            $index = $source['index'];
+            $duplicatesData[] = [
+                'db_name' => $dbName,
+                'csv_column' => $source['csv_column'],
+                'priority' => $source['priority'],
+                'index' => $index,
+                'data' => $columnsData[$index]
+            ];
+        }
+
+        // Calculer les corrélations entre sources
+        if (count($duplicatesData) > 1) {
+            echo "   📈 Corrélations entre sources:\n";
+            for ($i = 0; $i < count($duplicatesData) - 1; $i++) {
+                for ($j = $i + 1; $j < count($duplicatesData); $j++) {
+                    $corr = $detector->calculateColumnCorrelation(
+                        $duplicatesData[$i]['data'],
+                        $duplicatesData[$j]['data']
+                    );
+
+                    $src1 = $duplicatesData[$i]['csv_column'];
+                    $src2 = $duplicatesData[$j]['csv_column'];
+
+                    $corrIcon = $corr >= 80 ? '✅' : ($corr >= 50 ? '⚠️' : '❌');
+                    echo "      $corrIcon $src1 <-> $src2: {$corr}%\n";
+                }
+            }
+            echo "\n";
+        }
+
+        // Sélectionner la meilleure source
+        $best = $detector->selectBestColumn($duplicatesData, true);
+
+        if ($best) {
+            $validation = $detector->validateColumnData($best['data'], $dbName);
+            echo "   ✅ SOURCE SÉLECTIONNÉE: {$best['csv_column']}\n";
+            echo "      Priorité: {$best['priority']}\n";
+            echo "      Données valides: {$validation['stats']['valid_rate']}%\n";
+            echo "      Min: {$validation['stats']['min']}, Max: {$validation['stats']['max']}\n";
+            echo "      Moyenne: {$validation['stats']['avg']}\n\n";
+        } else {
+            echo "   ❌ AUCUNE SOURCE VALIDE\n\n";
+        }
+    }
+}
+
+echo "\n📊 ÉTAPE 4: DÉTECTION DES DIAGNOSTICS POSSIBLES\n";
+echo "═══════════════════════════════════════════════\n\n";
+
+$diagnostics = $detector->detectAvailableDiagnostics($validatedColumns);
+
+foreach ($diagnostics as $diagType => $result) {
+    $icon = $result['available'] ? '✅' : '❌';
+    $confidence = $result['confidence'];
+    $completeness = $result['completeness'];
+
+    echo "$icon " . strtoupper($diagType) . "\n";
+    echo "   Disponible: " . ($result['available'] ? 'OUI' : 'NON') . "\n";
+    echo "   Complétude: {$completeness}%\n";
+    echo "   Confiance: $confidence\n";
+    echo "   Score obligatoires: {$result['mandatory_score']}%\n";
+    echo "   Score recommandées: {$result['recommended_score']}%\n";
+
+    if (!empty($result['missing_mandatory'])) {
+        echo "   ⚠️  Manque (obligatoires): " . implode(', ', $result['missing_mandatory']) . "\n";
+    }
+
+    echo "\n";
+}
+
+echo "═══════════════════════════════════════════════════════════════\n";
+echo "✓ Analyse complète terminée\n";

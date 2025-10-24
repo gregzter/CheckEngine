@@ -1,0 +1,9 @@
+services:
+    # Rendre les services publics en environnement de test
+    test.App\Service\OBD2ColumnMapper:
+        alias: App\Service\OBD2ColumnMapper
+        public: true
+
+    test.App\Service\DiagnosticDetector:
+        alias: App\Service\DiagnosticDetector
+        public: true
