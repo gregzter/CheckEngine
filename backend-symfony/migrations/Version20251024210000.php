@@ -43,6 +43,8 @@ final class Version20251024210000 extends AbstractMigration
             last_name VARCHAR(100) DEFAULT NULL,
             created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
             last_login_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
+            reset_token VARCHAR(64) DEFAULT NULL,
+            reset_token_expires_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
             PRIMARY KEY (id)
         )');
         $this->addSql('CREATE UNIQUE INDEX UNIQ_IDENTIFIER_EMAIL ON "user" (email)');
