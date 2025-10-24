@@ -1,0 +1,69 @@
+#!/bin/bash
+# Script de vérification et migration TimescaleDB
+# À exécuter après redémarrage des containers
+
+set -e
+
+echo "🔍 ÉTAPE 1: Vérification TimescaleDB"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+cd /workspace/backend-symfony
+
+echo "1️⃣ Vérification shared_preload_libraries..."
+php bin/console dbal:run-sql "SHOW shared_preload_libraries;" || {
+    echo "❌ Erreur: PostgreSQL non accessible"
+    exit 1
+}
+
+echo ""
+echo "2️⃣ Création extension TimescaleDB..."
+php bin/console dbal:run-sql "CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;" || {
+    echo "❌ Erreur: TimescaleDB ne peut pas être chargé"
+    echo "💡 Avez-vous bien redémarré les containers ?"
+    exit 1
+}
+
+echo ""
+echo "3️⃣ Vérification version TimescaleDB..."
+php bin/console dbal:run-sql "SELECT extname, extversion FROM pg_extension WHERE extname = 'timescaledb';"
+
+echo ""
+echo "✅ TimescaleDB configuré avec succès!"
+echo ""
+echo "🔄 ÉTAPE 2: Exécution des migrations"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+php bin/console doctrine:migrations:migrate --no-interaction
+
+echo ""
+echo "📊 ÉTAPE 3: Vérification hypertable"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+php bin/console dbal:run-sql "
+SELECT
+    hypertable_name,
+    num_chunks,
+    compression_enabled
+FROM timescaledb_information.hypertables
+WHERE hypertable_name = 'trip_data';
+" || echo "⚠️  Hypertable pas encore créée (normal si première migration)"
+
+echo ""
+echo "📦 ÉTAPE 4: Chargement fixtures OBD2"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+php bin/console doctrine:fixtures:load --no-interaction
+
+echo ""
+echo "🎉 CONFIGURATION TERMINÉE !"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "📝 Prochaines étapes :"
+echo "  1. Tester le parser CSV :"
+echo "     php bin/demo-parse-csv var/tmp/data/trackLog-2025-oct.-23_12-00-00.csv"
+echo ""
+echo "  2. Tester le mapping colonnes :"
+echo "     php bin/demo-column-mapper"
+echo ""
+echo "  3. Voir les statistiques BDD :"
+echo "     php bin/console dbal:run-sql \"SELECT COUNT(*) FROM obd2_column_variant;\""

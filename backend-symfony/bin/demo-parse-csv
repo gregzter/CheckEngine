@@ -59,36 +59,47 @@ echo "   Recognized columns: {$validation['recognized_columns']}\n\n";
 // 2. Get or create test vehicle
 echo "📋 STEP 2: Preparing test vehicle\n";
 
+// Get or create test user first
+$userRepo = $em->getRepository(\App\Entity\User::class);
+$user = $userRepo->findOneBy(['email' => 'demo@checkengine.com']);
+
+if (!$user) {
+    $user = new \App\Entity\User();
+    $user->setEmail('demo@checkengine.com');
+    $user->setPassword('demo'); // Not hashed for demo only
+    $em->persist($user);
+    $em->flush();
+}
+
 $vehicle = $vehicleRepo->findOneBy(['nickname' => 'Test Prius+']);
 
 if (!$vehicle) {
     echo "   Creating test vehicle...\n";
-    
-    // Get or create test user
-    $userRepo = $em->getRepository(\App\Entity\User::class);
-    $user = $userRepo->findOneBy(['email' => 'demo@checkengine.com']);
-    
-    if (!$user) {
-        $user = new \App\Entity\User();
-        $user->setEmail('demo@checkengine.com');
-        $user->setPassword('demo'); // Not hashed for demo only
-        $em->persist($user);
-        $em->flush();
-    }
-    
+
     // Get or create vehicle model
     $modelRepo = $em->getRepository(\App\Entity\VehicleModel::class);
-    $model = $modelRepo->findOneBy(['name' => 'Prius+']);
-    
+    $model = $modelRepo->findOneBy([
+        'manufacturer' => 'Toyota',
+        'model' => 'Prius+',
+    ]);
+
     if (!$model) {
         $model = new \App\Entity\VehicleModel();
-        $model->setMake('Toyota');
-        $model->setName('Prius+');
-        $model->setYear(2015);
+        $model->setManufacturer('Toyota');
+        $model->setModel('Prius+');
+        $model->setYearStart(2012);
+        $model->setYearEnd(2021);
+        $model->setGeneration('XW30');
+        $model->setEngineCode('2ZR-FXE');
+        $model->setDisplacement('1.8');
+        $model->setFuelType('Hybrid');
+        $model->setHorsePower(136);
+        $model->setElectricMotorPower(82);
+        $model->setHybrid(true);
         $em->persist($model);
         $em->flush();
     }
-    
+
     $vehicle = new \App\Entity\Vehicle();
     $vehicle->setOwner($user);
     $vehicle->setModel($model);
@@ -109,15 +120,17 @@ echo "📋 STEP 3: Parsing CSV file (this may take a moment...)\n";
 $startTime = microtime(true);
 
 try {
-    // Note: parseAndStore expects User, but we'll adapt to use Vehicle
-    // For this demo, we'll need to modify the method signature
-    // For now, we'll show validation results
+    // Full parsing with real insertion
+    $parser = $container->get(\App\Service\OBD2CsvParser::class);
+    $trip = $parser->parseAndStore($csvPath, $user, $vehicle);
 
-    echo "   ⚠️  Full parsing requires User entity\n";
-    echo "   This demo shows validation only.\n";
-    echo "   To enable full parsing, create a User and pass it to parseAndStore()\n\n";
+    echo "   ✅ Parsing complete!\n";
+    echo "   Trip ID: {$trip->getId()}\n";
+    echo "   Status: {$trip->getStatus()}\n";
+    echo "   Duration: {$trip->getDuration()}s\n";
+    echo "   Data points: {$trip->getDataPointsCount()}\n\n";
 
-    // Show what would be parsed
+    // Show column mapping statistics
     $handle = fopen($csvPath, 'r');
     $headers = fgetcsv($handle);
 
@@ -128,21 +141,26 @@ try {
     echo "   -------------------------\n";
 
     $categories = [];
-    foreach ($mapping['recognized'] as $original => $normalized) {
-        $column = $columnMapper->getAllKnownColumns()[$normalized] ?? null;
+    foreach ($mapping['mapped'] as $normalized => $info) {
+        // Get category from OBD2Column entity
+        $columnRepo = $em->getRepository(\App\Entity\OBD2Column::class);
+        $column = $columnRepo->findOneBy(['name' => $normalized]);
         if ($column) {
-            $category = $column['category'];
+            $category = $column->getCategory();
             if (!isset($categories[$category])) {
                 $categories[$category] = [];
             }
-            $categories[$category][] = $normalized;
+            $categories[$category][] = [
+                'normalized' => $normalized,
+                'csv_column' => $info['csv_column']
+            ];
         }
     }
 
     foreach ($categories as $category => $columns) {
         echo "   \n   📁 " . strtoupper($category) . " (" . count($columns) . " colonnes):\n";
         foreach ($columns as $col) {
-            echo "      - $col\n";
+            echo "      - {$col['normalized']} (CSV: {$col['csv_column']})\n";
         }
     }
 
@@ -155,11 +173,13 @@ try {
 
     echo "\n   📈 File Statistics:\n";
     echo "   Total data rows: " . number_format($rowCount) . "\n";
-    echo "   Estimated data points: " . number_format($rowCount * count($mapping['recognized'])) . "\n";
-    echo "   Estimated storage: ~" . number_format(($rowCount * count($mapping['recognized']) * 50) / 1024 / 1024, 2) . " MB (uncompressed)\n";
-    echo "   With TimescaleDB compression: ~" . number_format(($rowCount * count($mapping['recognized']) * 5) / 1024 / 1024, 2) . " MB\n";
+    echo "   Estimated data points: " . number_format($rowCount * count($mapping['mapped'])) . "\n";
+    echo "   Estimated storage: ~" . number_format(($rowCount * count($mapping['mapped']) * 50) / 1024 / 1024, 2) . " MB (uncompressed)\n";
+    echo "   With TimescaleDB compression: ~" . number_format(($rowCount * count($mapping['mapped']) * 5) / 1024 / 1024, 2) . " MB\n";
 } catch (\Exception $e) {
     echo "❌ Error: {$e->getMessage()}\n";
+    echo "   Stack trace:\n";
+    echo $e->getTraceAsString() . "\n";
     exit(1);
 }
 

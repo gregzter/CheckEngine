@@ -86,37 +86,50 @@ class OBD2ColumnMapper
      */
     public function mapCsvHeaders(array $csvHeaders): array
     {
-        $mapping = [];
-        $recognized = [];
-        $unknown = [];
+        $mapped = [];
+        $unmapped = [];
         $duplicates = [];
 
         foreach ($csvHeaders as $index => $originalName) {
             // Trim whitespace from column names
             $originalName = trim($originalName);
-            
+
             $normalizedName = $this->normalizeColumnName($originalName);
 
             if ($normalizedName === null) {
-                $unknown[] = $originalName;
+                $unmapped[] = $originalName;
                 continue;
             }
 
-            $mapping[$originalName] = $normalizedName;
+            // Construire l'entrée avec priorité et index
+            $priority = $this->getVariantPriority($normalizedName, $originalName);
+            $entry = [
+                'csv_column' => $originalName,
+                'priority' => $priority,
+                'index' => $index,
+            ];
 
             // Détection des doublons (plusieurs sources pour la même donnée)
-            if (isset($recognized[$normalizedName])) {
-                $duplicates[$normalizedName][] = $originalName;
+            if (isset($mapped[$normalizedName])) {
+                // Keep track of duplicates
+                if (!isset($duplicates[$normalizedName])) {
+                    $duplicates[$normalizedName] = [$mapped[$normalizedName]];
+                }
+                $duplicates[$normalizedName][] = $entry;
+
+                // Keep the one with best priority
+                if ($priority < $mapped[$normalizedName]['priority']) {
+                    $mapped[$normalizedName] = $entry;
+                }
             } else {
-                $recognized[$normalizedName] = $originalName;
+                $mapped[$normalizedName] = $entry;
             }
         }
 
         return [
-            'mapping' => $mapping,              // original => normalized
-            'recognized' => $recognized,        // normalized => original (premier trouvé)
-            'unknown' => $unknown,              // colonnes non reconnues
-            'duplicates' => $duplicates,        // doublons par nom normalisé
+            'mapped' => $mapped,              // normalized => ['csv_column' => ..., 'priority' => ..., 'index' => ...]
+            'unmapped' => $unmapped,          // colonnes non reconnues
+            'duplicates' => $duplicates,      // doublons par nom normalisé
         ];
     }
 

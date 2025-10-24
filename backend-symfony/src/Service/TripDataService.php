@@ -6,7 +6,9 @@ use App\Entity\Trip;
 use App\Entity\TripData;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Service for bulk operations on TripData (time-series)
@@ -18,7 +20,8 @@ class TripDataService
 
     public function __construct(
         private readonly Connection $connection,
-        private readonly EntityManagerInterface $em
+        private readonly EntityManagerInterface $em,
+        private readonly LoggerInterface $logger
     ) {}
 
     /**
@@ -36,6 +39,11 @@ class TripDataService
         $inserted = 0;
         $batch = [];
 
+        $this->logger->info("Starting bulk insert", [
+            'trip_id' => $tripId,
+            'total_points' => count($dataPoints)
+        ]);
+
         foreach ($dataPoints as $point) {
             $batch[] = [
                 'trip_id' => $tripId,
@@ -46,15 +54,21 @@ class TripDataService
             ];
 
             if (count($batch) >= self::BULK_INSERT_BATCH_SIZE) {
-                $inserted += $this->executeBulkInsert($batch);
+                $count = $this->executeBulkInsert($batch);
+                $inserted += $count;
+                $this->logger->debug("Batch inserted", ['count' => $count]);
                 $batch = [];
             }
         }
 
         // Insert remaining batch
         if (!empty($batch)) {
-            $inserted += $this->executeBulkInsert($batch);
+            $count = $this->executeBulkInsert($batch);
+            $inserted += $count;
+            $this->logger->debug("Final batch inserted", ['count' => $count]);
         }
+
+        $this->logger->info("Bulk insert complete", ['total_inserted' => $inserted]);
 
         return $inserted;
     }
@@ -71,24 +85,28 @@ class TripDataService
         $values = [];
         $params = [];
         $types = [];
-        $paramIndex = 1;
 
         foreach ($batch as $row) {
             $placeholders = [];
+            // Use nextval for id (composite PK with timestamp)
+            $placeholders[] = "nextval('trip_data_id_seq')";
+            
+            // Add other columns
             foreach (['trip_id', 'timestamp', 'pid_name', 'value', 'unit'] as $col) {
                 $placeholders[] = '?';
                 $params[] = $row[$col];
-                $types[] = match ($col) {
-                    'trip_id' => \PDO::PARAM_INT,
-                    'value' => \PDO::PARAM_STR, // DECIMAL as string
-                    default => \PDO::PARAM_STR,
+                $types[] = match($col) {
+                    'trip_id' => ParameterType::INTEGER,
+                    'value' => ParameterType::STRING, // NUMERIC as string
+                    default => ParameterType::STRING,
                 };
             }
+            
             $values[] = '(' . implode(', ', $placeholders) . ')';
         }
 
         $sql = sprintf(
-            'INSERT INTO trip_data (trip_id, timestamp, pid_name, value, unit) VALUES %s',
+            'INSERT INTO trip_data (id, trip_id, timestamp, pid_name, value, unit) VALUES %s',
             implode(', ', $values)
         );
 

@@ -14,9 +14,9 @@ use Psr\Log\LoggerInterface;
  */
 class OBD2CsvParser
 {
-    private const CHUNK_SIZE = 1000;
-    private const DATE_FORMAT_DEVICE = 'd-M.-Y H:i:s.u'; // 24-Oct.-2024 10:30:45.123
-    private const DATE_FORMAT_GPS = 'd-M.-Y H:i:s.u';    // Same format
+    private const CHUNK_SIZE = 1000; // Rows per bulk insert batch
+    private const DATE_FORMAT_DEVICE = 'd-M.-Y H:i:s.u'; // 23-oct.-2025 12:00:11.832
+    private const DATE_FORMAT_GPS = 'D M d H:i:s e Y';    // Thu Oct 23 12:00:11 GMT+02:00 2025
 
     public function __construct(
         private readonly OBD2ColumnMapper $columnMapper,
@@ -71,6 +71,7 @@ class OBD2CsvParser
             $trip->setFilename(basename($filepath));
             $trip->setFilePath($filepath);
             $trip->setStatus('processing');
+            $trip->setSessionDate(new \DateTimeImmutable()); // Set session date to now
 
             // We'll update these after parsing
             $firstTimestamp = null;
@@ -97,6 +98,14 @@ class OBD2CsvParser
                 // Extract timestamp
                 $timestamp = $this->extractTimestamp($parsedRow);
                 if ($timestamp === null) {
+                    // Debug first failed timestamp
+                    if ($totalRows === 1) {
+                        $this->logger->error("First row timestamp extraction failed", [
+                            'parsedRow' => $parsedRow,
+                            'timestamp_device' => $parsedRow['timestamp_device'] ?? 'N/A',
+                            'timestamp_gps' => $parsedRow['timestamp_gps'] ?? 'N/A'
+                        ]);
+                    }
                     $this->logger->warning("Row without timestamp", ['row' => $totalRows]);
                     continue;
                 }
@@ -121,12 +130,22 @@ class OBD2CsvParser
                 }
 
                 // Collect raw data for diagnostics (keep in memory for analysis)
-                $rawDataForDiagnostics[] = $parsedRow;
+                // TODO: Optimize memory usage - currently disabled for large files
+                // $rawDataForDiagnostics[] = $parsedRow;
 
                 // Flush batch to database
                 if (count($dataPoints) >= self::CHUNK_SIZE) {
-                    $this->tripDataService->bulkInsert($trip, $dataPoints);
-                    $dataPoints = [];
+                    try {
+                        $this->tripDataService->bulkInsert($trip, $dataPoints);
+                        $dataPoints = [];
+                    } catch (\Exception $e) {
+                        $this->logger->error("Bulk insert failed", [
+                            'error' => $e->getMessage(),
+                            'trip_id' => $trip->getId(),
+                            'chunk_size' => count($dataPoints)
+                        ]);
+                        throw $e;
+                    }
                 }
             }
 
@@ -175,11 +194,22 @@ class OBD2CsvParser
 
             return $trip;
         } catch (\Exception $e) {
-            if (isset($trip)) {
-                $trip->setStatus('error');
-                $this->em->flush();
+            $this->logger->error("CSV parsing failed", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            if (isset($trip) && $this->em->isOpen()) {
+                try {
+                    $trip->setStatus('error');
+                    $this->em->flush();
+                } catch (\Exception $flushException) {
+                    $this->logger->error("Failed to update trip status", [
+                        'error' => $flushException->getMessage()
+                    ]);
+                }
             }
-            $this->logger->error("CSV parsing failed", ['error' => $e->getMessage()]);
+            
             throw $e;
         }
     }
@@ -211,10 +241,14 @@ class OBD2CsvParser
                 continue; // Skip unknown columns
             }
 
-            // Clean value (remove '-', 'N/A', etc.)
-            $cleanValue = $this->cleanValue($value);
-
-            $parsed[$normalizedColumn] = $cleanValue;
+            // For timestamps, keep as string (don't clean)
+            if ($normalizedColumn === 'timestamp_device' || $normalizedColumn === 'timestamp_gps') {
+                $parsed[$normalizedColumn] = trim($value);
+            } else {
+                // Clean value (remove '-', 'N/A', etc.) for numeric columns
+                $cleanValue = $this->cleanValue($value);
+                $parsed[$normalizedColumn] = $cleanValue;
+            }
         }
 
         return empty($parsed) ? null : $parsed;
@@ -228,33 +262,42 @@ class OBD2CsvParser
         // Try timestamp_device first (Device Time column)
         if (isset($parsedRow['timestamp_device']) && !empty($parsedRow['timestamp_device'])) {
             try {
-                return \DateTimeImmutable::createFromFormat(
+                $date = \DateTimeImmutable::createFromFormat(
                     self::DATE_FORMAT_DEVICE,
                     $parsedRow['timestamp_device']
                 );
+                if ($date !== false) {
+                    return $date;
+                }
             } catch (\Exception $e) {
                 // Fallback to simple parsing
-                try {
-                    return new \DateTimeImmutable($parsedRow['timestamp_device']);
-                } catch (\Exception $e2) {
-                    // Continue to GPS time
-                }
+            }
+            
+            try {
+                return new \DateTimeImmutable($parsedRow['timestamp_device']);
+            } catch (\Exception $e2) {
+                // Continue to GPS time
             }
         }
 
         // Fallback to timestamp_gps (GPS Time column)
         if (isset($parsedRow['timestamp_gps']) && !empty($parsedRow['timestamp_gps'])) {
             try {
-                return \DateTimeImmutable::createFromFormat(
+                $date = \DateTimeImmutable::createFromFormat(
                     self::DATE_FORMAT_GPS,
                     $parsedRow['timestamp_gps']
                 );
-            } catch (\Exception $e) {
-                try {
-                    return new \DateTimeImmutable($parsedRow['timestamp_gps']);
-                } catch (\Exception $e2) {
-                    return null;
+                if ($date !== false) {
+                    return $date;
                 }
+            } catch (\Exception $e) {
+                // Fallback
+            }
+            
+            try {
+                return new \DateTimeImmutable($parsedRow['timestamp_gps']);
+            } catch (\Exception $e2) {
+                return null;
             }
         }
 

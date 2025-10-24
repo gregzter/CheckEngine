@@ -6,22 +6,25 @@ use App\Repository\TripDataRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * TimescaleDB hypertable for OBD2 time-series data
+ * Composite primary key: (id, timestamp) required for partitioning
+ */
 #[ORM\Entity(repositoryClass: TripDataRepository::class)]
-#[ORM\Index(columns: ['timestamp'], name: 'idx_timestamp')]
-#[ORM\Index(columns: ['pid_name'], name: 'idx_pid_name')]
+#[ORM\Index(columns: ['trip_id', 'timestamp'], name: 'idx_trip_timestamp')]
+#[ORM\Index(columns: ['pid_name', 'timestamp'], name: 'idx_pid_timestamp')]
 class TripData
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'dataPoints')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Trip $trip = null;
-
+    #[ORM\Id]
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $timestamp = null;
+
+    #[ORM\Column(type: Types::INTEGER)]
+    private ?int $trip_id = null;
 
     #[ORM\Column(length: 50)]
     private ?string $pidName = null;
@@ -37,15 +40,14 @@ class TripData
         return $this->id;
     }
 
-    public function getTrip(): ?Trip
+    public function getTripId(): ?int
     {
-        return $this->trip;
+        return $this->trip_id;
     }
 
-    public function setTrip(?Trip $trip): static
+    public function setTripId(int $trip_id): static
     {
-        $this->trip = $trip;
-
+        $this->trip_id = $trip_id;
         return $this;
     }
 
