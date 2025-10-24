@@ -90,18 +90,18 @@ class TripDataService
             $placeholders = [];
             // Use nextval for id (composite PK with timestamp)
             $placeholders[] = "nextval('trip_data_id_seq')";
-            
+
             // Add other columns
             foreach (['trip_id', 'timestamp', 'pid_name', 'value', 'unit'] as $col) {
                 $placeholders[] = '?';
                 $params[] = $row[$col];
-                $types[] = match($col) {
+                $types[] = match ($col) {
                     'trip_id' => ParameterType::INTEGER,
                     'value' => ParameterType::STRING, // NUMERIC as string
                     default => ParameterType::STRING,
                 };
             }
-            
+
             $values[] = '(' . implode(', ', $placeholders) . ')';
         }
 

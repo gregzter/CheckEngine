@@ -198,7 +198,7 @@ class OBD2CsvParser
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             if (isset($trip) && $this->em->isOpen()) {
                 try {
                     $trip->setStatus('error');
@@ -209,7 +209,7 @@ class OBD2CsvParser
                     ]);
                 }
             }
-            
+
             throw $e;
         }
     }
@@ -272,7 +272,7 @@ class OBD2CsvParser
             } catch (\Exception $e) {
                 // Fallback to simple parsing
             }
-            
+
             try {
                 return new \DateTimeImmutable($parsedRow['timestamp_device']);
             } catch (\Exception $e2) {
@@ -293,7 +293,7 @@ class OBD2CsvParser
             } catch (\Exception $e) {
                 // Fallback
             }
-            
+
             try {
                 return new \DateTimeImmutable($parsedRow['timestamp_gps']);
             } catch (\Exception $e2) {
