@@ -41,8 +41,10 @@ class TripControllerTest extends WebTestCase
         }
 
         // Purge only user data tables (keep OBD2 reference data)
-        $this->entityManager->createQuery('DELETE FROM App\Entity\Trip')->execute();
+        // Order matters: delete children before parents to avoid FK violations
+        $this->entityManager->getConnection()->executeStatement('DELETE FROM trip_data');
         $this->entityManager->createQuery('DELETE FROM App\Entity\TripDiagnostic')->execute();
+        $this->entityManager->createQuery('DELETE FROM App\Entity\Trip')->execute();
         $this->entityManager->createQuery('DELETE FROM App\Entity\Vehicle')->execute();
         $this->entityManager->createQuery('DELETE FROM App\Entity\User')->execute();
 
@@ -405,8 +407,11 @@ class TripControllerTest extends WebTestCase
 
         // Vérifier que tous les uploads ont réussi ou échoué de manière cohérente
         foreach ($results as $statusCode) {
-            $this->assertContains($statusCode, [200, 201, 400, 404], 
-                "Status code should be valid: {$statusCode}");
+            $this->assertContains(
+                $statusCode,
+                [200, 201, 400, 404],
+                "Status code should be valid: {$statusCode}"
+            );
         }
     }
 }
