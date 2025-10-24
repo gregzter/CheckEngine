@@ -49,8 +49,10 @@
         "terminal.integrated.defaultProfile.linux": "bash",
         "php.validate.executablePath": "/usr/local/bin/php",
         "intelephense.environment.phpVersion": "8.3",
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.defaultInterpreterPath": "${workspaceFolder}/backend-python/venv/bin/python",
         "python.analysis.typeCheckingMode": "basic",
+        "python.venvPath": "${workspaceFolder}/backend-python",
+        "python.terminal.activateEnvironment": true,
         "[php]": {
           "editor.defaultFormatter": "bmewburn.vscode-intelephense-client",
           "editor.formatOnSave": true

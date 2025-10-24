@@ -51,6 +51,8 @@ services:
       POSTGRES_DB: checkengine
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=timescaledb"
+    command: postgres -c shared_preload_libraries=timescaledb
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql

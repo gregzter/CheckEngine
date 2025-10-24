@@ -12,22 +12,14 @@ git config --global --add safe.directory '*'
 echo "📦 Installing Composer dependencies..."
 cd /workspace/backend-symfony && composer install --no-interaction --prefer-dist
 
-echo "🐍 Installing Python dependencies..."
+echo "🐍 Setting up Python virtual environment..."
 cd /workspace/backend-python
 if [ ! -d "venv" ]; then
-    echo "   Creating Python virtual environment..."
     python3 -m venv venv
 fi
-echo "   Activating venv and installing packages..."
 source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 deactivate
 
-echo ""
-echo "✅ DevContainer ready!"
-echo ""
-echo "📚 Quick start:"
-echo "   Symfony:  cd backend-symfony && php bin/console"
-echo "   Python:   cd backend-python && source venv/bin/activate"
-echo "   Docker:   make up"
+echo "✅ DevContainer ready! You can now run: make install"
