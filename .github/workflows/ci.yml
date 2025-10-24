@@ -77,13 +77,13 @@ jobs:
         working-directory: backend-symfony
 
       - name: 📊 Generate coverage badge
-        uses: cicirello/jacoco-badge-generator@v2
+        uses: emibcn/badge-action@v2.0.3
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
-          jacoco-csv-file: backend-symfony/coverage/clover.xml
-          badges-directory: .github/badges
-          generate-branches-badge: true
-          generate-summary: true
+          label: 'coverage'
+          status: ${{ env.COVERAGE }}
+          color: 'green'
+          path: '.github/badges/coverage.svg'
 
       - name: 📈 Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -111,24 +111,26 @@ jobs:
           path: backend-symfony/coverage/html
           retention-days: 30
 
-      - name: ✅ Check coverage threshold
+      - name: ✅ Check coverage threshold (15%)
         run: |
           COVERAGE=$(php -r "
-            \$xml = simplexml_load_file('coverage/clover.xml');
+            \$xml = simplexml_load_file('backend-symfony/coverage/clover.xml');
             \$metrics = \$xml->project->metrics;
-            \$statements = (int)\$metrics['statements'];
             \$covered = (int)\$metrics['coveredstatements'];
-            echo round((\$covered / \$statements) * 100, 2);
+            \$total = (int)\$metrics['statements'];
+            \$percentage = round((\$covered / \$total) * 100, 2);
+            echo \$percentage;
           ")
-          echo "📊 Coverage: $COVERAGE%"
-          
-          THRESHOLD=15
-          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
-            echo "❌ Coverage ($COVERAGE%) is below threshold ($THRESHOLD%)"
+          echo "Coverage: \$COVERAGE%"
+          echo "COVERAGE=\$COVERAGE%" >> \$GITHUB_ENV
+          if (( \$(echo "\$COVERAGE < 15" | bc -l) )); then
+            echo "❌ Coverage \$COVERAGE% is below 15% threshold"
             exit 1
           fi
-          echo "✅ Coverage ($COVERAGE%) meets threshold ($THRESHOLD%)"
+          echo "✅ Coverage \$COVERAGE% meets 15% threshold"
         working-directory: backend-symfony
+
+      - name: 📊 Generate coverage badge
 
   commit-badges:
     name: Commit Coverage Badges
