@@ -13,6 +13,7 @@ class TripControllerTest extends WebTestCase
     private string $testCsvPath;
     private string $testZipPath;
     private EntityManagerInterface $entityManager;
+    private ?int $testVehicleId = null;
 
     protected function setUp(): void
     {
@@ -86,6 +87,9 @@ class TripControllerTest extends WebTestCase
         $this->entityManager->persist($vehicle);
 
         $this->entityManager->flush();
+        
+        // Store vehicle ID for tests
+        $this->testVehicleId = $vehicle->getId();
     }
 
     protected function tearDown(): void
@@ -167,7 +171,7 @@ class TripControllerTest extends WebTestCase
 
         $client->request('POST', '/api/csv-upload', [
             'user_email' => 'test@checkengine.local',
-            'vehicle_id' => 1,
+            'vehicle_id' => $this->testVehicleId,
         ], [
             'csv_file' => $uploadedFile,
         ]);
@@ -187,7 +191,7 @@ class TripControllerTest extends WebTestCase
 
         $client->request('POST', '/api/csv-upload', [
             'user_email' => 'test@checkengine.local',
-            'vehicle_id' => 1,
+            'vehicle_id' => $this->testVehicleId,
         ]);
 
         $response = $client->getResponse();
@@ -216,7 +220,7 @@ class TripControllerTest extends WebTestCase
 
         $client->request('POST', '/api/csv-upload', [
             'user_email' => 'test@checkengine.local',
-            'vehicle_id' => 1,
+            'vehicle_id' => $this->testVehicleId,
         ], [
             'csv_file' => $uploadedFile,
         ]);
@@ -241,7 +245,7 @@ class TripControllerTest extends WebTestCase
 
         $client->request('POST', '/api/csv-upload', [
             'user_email' => 'test@checkengine.local',
-            'vehicle_id' => 1,
+            'vehicle_id' => $this->testVehicleId,
         ], [
             'csv_file' => $uploadedFile,
         ]);
@@ -318,7 +322,7 @@ class TripControllerTest extends WebTestCase
 
         $client->request('POST', '/api/csv-upload', [
             'user_email' => 'test@checkengine.local',
-            'vehicle_id' => 1,
+            'vehicle_id' => $this->testVehicleId,
         ], [
             'csv_file' => $uploadedFile,
         ]);
@@ -349,7 +353,7 @@ class TripControllerTest extends WebTestCase
 
         $client->request('POST', '/api/csv-upload', [
             'user_email' => 'test@checkengine.local',
-            'vehicle_id' => 1,
+            'vehicle_id' => $this->testVehicleId,
         ], [
             'csv_file' => $uploadedFile,
         ]);
@@ -391,7 +395,7 @@ class TripControllerTest extends WebTestCase
 
             $client->request('POST', '/api/csv-upload', [
                 'user_email' => 'test@checkengine.local',
-                'vehicle_id' => 1,
+                'vehicle_id' => $this->testVehicleId,
             ], [
                 'csv_file' => $uploadedFile,
             ]);
