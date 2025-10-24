@@ -33,9 +33,18 @@ class TripControllerTest extends WebTestCase
             throw new \LogicException('Entity manager not initialized');
         }
 
-        // Purge database
-        $purger = new ORMPurger($this->entityManager);
-        $purger->purge();
+        // Load OBD2 fixtures if tables are empty (load before purge to avoid foreign key issues)
+        $obd2Count = $this->entityManager->getRepository(\App\Entity\OBD2Column::class)->count([]);
+        if ($obd2Count === 0) {
+            $fixture = new \App\DataFixtures\OBD2ColumnFixtures();
+            $fixture->load($this->entityManager);
+        }
+
+        // Purge only user data tables (keep OBD2 reference data)
+        $this->entityManager->createQuery('DELETE FROM App\Entity\Trip')->execute();
+        $this->entityManager->createQuery('DELETE FROM App\Entity\TripDiagnostic')->execute();
+        $this->entityManager->createQuery('DELETE FROM App\Entity\Vehicle')->execute();
+        $this->entityManager->createQuery('DELETE FROM App\Entity\User')->execute();
 
         // Create test user
         $user = new \App\Entity\User();
