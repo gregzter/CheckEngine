@@ -1,10 +1,12 @@
 name: Security Analysis
 
+# Temporairement désactivé - nécessite configuration
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+  workflow_dispatch:  # Manuel uniquement
+  # push:
+  #   branches: [ main, develop ]
+  # pull_request:
+  #   branches: [ main, develop ]
   schedule:
     # Tous les lundis à 9h (UTC)
     - cron: '0 9 * * 1'

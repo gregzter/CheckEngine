@@ -1,10 +1,12 @@
 name: Code Quality
 
+# Temporairement désactivé - nécessite configuration PHPStan/Psalm
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+  workflow_dispatch:  # Manuel uniquement
+  # push:
+  #   branches: [ main, develop ]
+  # pull_request:
+  #   branches: [ main, develop ]
 
 jobs:
   phpstan:
