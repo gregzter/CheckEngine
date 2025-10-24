@@ -20,13 +20,12 @@ class ParseCsvHandler
         private readonly EntityManagerInterface $em,
         private readonly LoggerInterface $logger,
         private readonly string $uploadDir
-    ) {
-    }
+    ) {}
 
     public function __invoke(ParseCsvMessage $message): void
     {
         $filename = $message->getFilename();
-        $filepath = $this->uploadDir.'/'.$filename;
+        $filepath = $this->uploadDir . '/' . $filename;
 
         $this->logger->info('Starting async CSV parsing', [
             'filename' => $filename,
