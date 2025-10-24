@@ -86,52 +86,37 @@ class OBD2ColumnMapper
      */
     public function mapCsvHeaders(array $csvHeaders): array
     {
-        $mapped = [];
-        $unmapped = [];
+        $mapping = [];
+        $recognized = [];
+        $unknown = [];
         $duplicates = [];
 
-        foreach ($csvHeaders as $index => $csvColumn) {
-            $csvColumn = trim($csvColumn);
-            $dbName = $this->normalizeColumnName($csvColumn);
+        foreach ($csvHeaders as $index => $originalName) {
+            // Trim whitespace from column names
+            $originalName = trim($originalName);
+            
+            $normalizedName = $this->normalizeColumnName($originalName);
 
-            if ($dbName === null) {
-                $unmapped[] = $csvColumn;
+            if ($normalizedName === null) {
+                $unknown[] = $originalName;
                 continue;
             }
 
-            // Trouver la priorité de cette variante
-            $priority = $this->getVariantPriority($dbName, $csvColumn);
+            $mapping[$originalName] = $normalizedName;
 
-            $columnInfo = [
-                'csv_column' => $csvColumn,
-                'priority' => $priority,
-                'index' => $index
-            ];
-
-            // Première occurrence de cette donnée
-            if (!isset($mapped[$dbName])) {
-                $mapped[$dbName] = $columnInfo;
+            // Détection des doublons (plusieurs sources pour la même donnée)
+            if (isset($recognized[$normalizedName])) {
+                $duplicates[$normalizedName][] = $originalName;
             } else {
-                // Doublon détecté
-                if (!isset($duplicates[$dbName])) {
-                    // Ajouter l'original comme premier doublon
-                    $duplicates[$dbName] = [$mapped[$dbName]];
-                }
-
-                // Ajouter ce doublon
-                $duplicates[$dbName][] = $columnInfo;
-
-                // Garder la meilleure source (priorité la plus basse)
-                if ($priority < $mapped[$dbName]['priority']) {
-                    $mapped[$dbName] = $columnInfo;
-                }
+                $recognized[$normalizedName] = $originalName;
             }
         }
 
         return [
-            'mapped' => $mapped,
-            'unmapped' => $unmapped,
-            'duplicates' => $duplicates
+            'mapping' => $mapping,              // original => normalized
+            'recognized' => $recognized,        // normalized => original (premier trouvé)
+            'unknown' => $unknown,              // colonnes non reconnues
+            'duplicates' => $duplicates,        // doublons par nom normalisé
         ];
     }
 

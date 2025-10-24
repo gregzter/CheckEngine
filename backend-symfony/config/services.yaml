@@ -19,6 +19,12 @@ services:
     # Services publics pour scripts CLI et démo
     App\Service\OBD2ColumnMapper:
         public: true
-    
+
     App\Service\DiagnosticDetector:
+        public: true
+
+    App\Service\OBD2CsvParser:
+        public: true
+
+    App\Service\TripDataService:
         public: true

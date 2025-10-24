@@ -1,11 +1,12 @@
 -- ====================================
 -- CHECKENGINE - Database Init
--- PostgreSQL 17
+-- PostgreSQL 17 + TimescaleDB
 -- ====================================
 
 -- Enable extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm"; -- For text search
+CREATE EXTENSION IF NOT EXISTS timescaledb; -- TimescaleDB for time-series data
 
 -- Create custom types
 CREATE TYPE trip_type AS ENUM ('city', 'highway', 'mixed', 'unknown');

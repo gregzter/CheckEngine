@@ -42,9 +42,9 @@ services:
       - checkengine-network
     command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 
-  # ===== POSTGRESQL 17 =====
+  # ===== POSTGRESQL 17 + TimescaleDB =====
   postgres:
-    image: postgres:17-alpine
+    image: timescale/timescaledb:latest-pg17
     container_name: checkengine-postgres
     restart: unless-stopped
     environment:
