@@ -86,7 +86,7 @@ jobs:
           path: '.github/badges/coverage.svg'
 
       - name: 📈 Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v4
         if: github.event_name == 'push'
         with:
           files: backend-symfony/coverage/clover.xml

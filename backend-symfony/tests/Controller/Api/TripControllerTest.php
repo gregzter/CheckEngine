@@ -87,7 +87,7 @@ class TripControllerTest extends WebTestCase
         $this->entityManager->persist($vehicle);
 
         $this->entityManager->flush();
-        
+
         // Store vehicle ID for tests
         $this->testVehicleId = $vehicle->getId();
     }
