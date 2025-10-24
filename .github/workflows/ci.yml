@@ -122,7 +122,6 @@ jobs:
             echo \$percentage;
           ")
           echo "Coverage: \$COVERAGE%"
-          echo "COVERAGE=\$COVERAGE%" >> \$GITHUB_ENV
           if (( \$(echo "\$COVERAGE < 15" | bc -l) )); then
             echo "❌ Coverage \$COVERAGE% is below 15% threshold"
             exit 1
@@ -130,13 +129,39 @@ jobs:
           echo "✅ Coverage \$COVERAGE% meets 15% threshold"
         working-directory: backend-symfony
 
-      - name: 📊 Generate coverage badge
+      - name: 📈 Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: github.event_name == 'push'
+        with:
+          files: backend-symfony/coverage/clover.xml
+          flags: unittests
+          name: CheckEngine-PHP
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: 📋 Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: backend-symfony/coverage/junit.xml
+          check_name: PHPUnit Test Results
+
+      - name: 💾 Archive coverage results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: backend-symfony/coverage/html
+          retention-days: 30
 
   commit-badges:
     name: Commit Coverage Badges
     runs-on: ubuntu-latest
     needs: tests
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     
     steps:
       - name: 📥 Checkout code
@@ -145,12 +170,21 @@ jobs:
           ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 📊 Generate coverage badge
-        uses: cicirello/jacoco-badge-generator@v2
+      - name: � Download coverage artifact
+        uses: actions/download-artifact@v4
         with:
-          jacoco-csv-file: backend-symfony/coverage/clover.xml
-          badges-directory: .github/badges
-          generate-branches-badge: true
+          name: coverage-report
+          path: backend-symfony/coverage/html
+
+      - name: 📊 Generate coverage badge
+        run: |
+          # Extract coverage from artifact
+          COVERAGE=$(grep -oP 'Total:\s+\K[\d.]+(?=%)' backend-symfony/coverage/html/index.html | head -1)
+          echo "Coverage: $COVERAGE%"
+          
+          # Generate badge SVG
+          mkdir -p .github/badges
+          curl -s "https://img.shields.io/badge/coverage-${COVERAGE}%25-green" > .github/badges/coverage.svg
 
       - name: 💾 Commit badges
         run: |
