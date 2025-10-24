@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\Trip;
 use App\Entity\User;
 use App\Entity\Vehicle;
+use App\Service\Diagnostic\StreamingDiagnosticAnalyzer;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -22,6 +23,7 @@ class OBD2CsvParser
         private readonly OBD2ColumnMapper $columnMapper,
         private readonly DiagnosticDetector $diagnosticDetector,
         private readonly TripDataService $tripDataService,
+        private readonly StreamingDiagnosticAnalyzer $diagnosticAnalyzer,
         private readonly EntityManagerInterface $em,
         private readonly LoggerInterface $logger
     ) {}
@@ -80,10 +82,12 @@ class OBD2CsvParser
             $this->em->persist($trip);
             $this->em->flush(); // Get trip ID for inserting data
 
-            // 3. Stream CSV data in chunks
+            // 3. Initialize streaming diagnostic analyzer
+            $this->diagnosticAnalyzer->startSession();
+
+            // 4. Stream CSV data in chunks
             $totalRows = 0;
             $dataPoints = [];
-            $rawDataForDiagnostics = [];
 
             while (($row = fgetcsv($handle)) !== false) {
                 $totalRows++;
@@ -115,6 +119,9 @@ class OBD2CsvParser
                 }
                 $lastTimestamp = $timestamp;
 
+                // Feed row to streaming diagnostic analyzer (incremental processing)
+                $this->diagnosticAnalyzer->processRow($parsedRow);
+
                 // Build data points for bulk insert
                 foreach ($parsedRow as $pidName => $value) {
                     if ($pidName === 'timestamp_device' || $pidName === 'timestamp_gps') {
@@ -128,10 +135,6 @@ class OBD2CsvParser
                         'unit' => null, // Can be enhanced later from OBD2Column entity
                     ];
                 }
-
-                // Collect raw data for diagnostics (keep in memory for analysis)
-                // TODO: Optimize memory usage - currently disabled for large files
-                // $rawDataForDiagnostics[] = $parsedRow;
 
                 // Flush batch to database
                 if (count($dataPoints) >= self::CHUNK_SIZE) {
@@ -166,16 +169,17 @@ class OBD2CsvParser
             $trip->setDataPointsCount($totalRows);
             $trip->setStatus('parsed');
 
-            // 6. Run diagnostics
-            $this->logger->info("Running diagnostics", ['trip_id' => $trip->getId()]);
-            $diagnosticResults = $this->runDiagnostics($rawDataForDiagnostics, $mapping);
+            // 6. Finalize diagnostics (streaming analysis)
+            $this->logger->info("Finalizing diagnostics", ['trip_id' => $trip->getId()]);
+            $diagnosticResults = $this->diagnosticAnalyzer->finalizeSession();
 
             // 7. Store diagnostic results
             $trip->setAnalysisResults($diagnosticResults);
             $trip->setStatus('analyzed');
 
-            if (isset($diagnosticResults['catalyst_efficiency'])) {
-                $trip->setCatalystEfficiency((string)$diagnosticResults['catalyst_efficiency']);
+            // Extract scores for Trip columns
+            if (isset($diagnosticResults['catalyst_efficiency']['score'])) {
+                $trip->setCatalystEfficiency((string)$diagnosticResults['catalyst_efficiency']['score']);
             }
             if (isset($diagnosticResults['fuel_trim']['short_term_avg'])) {
                 $trip->setAvgFuelTrimST((string)$diagnosticResults['fuel_trim']['short_term_avg']);
@@ -189,7 +193,9 @@ class OBD2CsvParser
             $this->logger->info("CSV parsing complete", [
                 'trip_id' => $trip->getId(),
                 'total_rows' => $totalRows,
-                'duration_seconds' => $duration ?? 0
+                'duration_seconds' => $duration ?? 0,
+                'catalyst_score' => $diagnosticResults['catalyst_efficiency']['score'] ?? null,
+                'fuel_trim_score' => $diagnosticResults['fuel_trim']['score'] ?? null,
             ]);
 
             return $trip;
@@ -328,32 +334,6 @@ class OBD2CsvParser
     }
 
     /**
-     * Run diagnostics on parsed data
-     */
-    private function runDiagnostics(array $rawData, array $mapping): array
-    {
-        // Convert to format expected by DiagnosticDetector
-        // (array of rows with normalized column names)
-
-        $diagnosticResults = [];
-
-        // Check what diagnostics are available
-        $availableColumns = array_keys($rawData[0] ?? []);
-
-        // For now, just return available columns
-        // TODO: Enhance DiagnosticDetector to have getAvailableDiagnostics method
-        $diagnosticResults['available_columns'] = $availableColumns;
-
-        // TODO: Implement diagnostic calculations using DiagnosticDetector
-        // This would call methods like:
-        // - $this->diagnosticDetector->analyzeCatalyst($rawData)
-        // - $this->diagnosticDetector->analyzeO2Sensors($rawData)
-        // - $this->diagnosticDetector->analyzeFuelTrims($rawData)
-
-        return $diagnosticResults;
-    }
-
-    /**
      * Validate CSV file before parsing
      */
     public function validateCsvFile(string $filepath): array
@@ -375,6 +355,13 @@ class OBD2CsvParser
         $headers = fgetcsv($handle);
         if ($headers === false || count($headers) < 3) {
             $errors[] = "Invalid CSV headers (minimum 3 columns required)";
+            fclose($handle);
+            return [
+                'valid' => false,
+                'errors' => $errors,
+                'total_columns' => 0,
+                'recognized_columns' => 0,
+            ];
         }
 
         // Check for timestamp column

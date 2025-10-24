@@ -1,0 +1,11 @@
+when@prod:
+    doctrine:
+        dbal:
+            # Disable logging in production
+            logging: false
+            profiling: false
+
+            # Optimize connection pooling
+            options:
+                # Use persistent connections for better performance
+                # PDO::ATTR_PERSISTENT: true

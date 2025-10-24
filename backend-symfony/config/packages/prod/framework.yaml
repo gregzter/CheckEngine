@@ -1,0 +1,16 @@
+when@prod:
+    framework:
+        # Disable profiler in production for better performance
+        profiler: false
+
+        # Optimize session handling
+        session:
+            cookie_secure: auto
+            cookie_httponly: true
+            cookie_samesite: lax
+
+        # Cache configuration for production
+        cache:
+            # Use APCu if available
+            app: cache.adapter.apcu
+            system: cache.adapter.system

@@ -3,5 +3,20 @@
     "python.terminal.activateEnvironment": true,
     "python.analysis.extraPaths": [
         "${workspaceFolder}/backend-python"
-    ]
+    ],
+    
+    // Coverage Gutters - Affichage ligne par ligne
+    "coverage-gutters.coverageFileNames": [
+        "backend-symfony/coverage/clover.xml",
+        "coverage/clover.xml",
+        "clover.xml"
+    ],
+    "coverage-gutters.showLineCoverage": true,
+    "coverage-gutters.showRulerCoverage": true,
+    "coverage-gutters.coverageBaseDir": "backend-symfony",
+    "coverage-gutters.showGutterCoverage": true,
+    
+    // Test Coverage Explorer - Vue en arbre avec %
+    "testCoverageExplorer.coverageFilePath": "backend-symfony/coverage/clover.xml",
+    "testCoverageExplorer.autoRefresh": true
 }

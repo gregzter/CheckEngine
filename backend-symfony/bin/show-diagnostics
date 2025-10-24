@@ -1,0 +1,224 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Display Trip Diagnostics
+ *
+ * Usage: php bin/show-diagnostics <trip_id>
+ *
+ * Shows diagnostic results from streaming analysis in a readable format.
+ */
+
+use App\Entity\Trip;
+use Symfony\Component\Console\Helper\Table;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+$kernel = new \App\Kernel($_SERVER['APP_ENV'] ?? 'dev', (bool)$_SERVER['APP_DEBUG'] ?? false);
+$kernel->boot();
+$container = $kernel->getContainer();
+
+$em = $container->get('doctrine')->getManager();
+$output = new ConsoleOutput();
+
+if ($argc < 2) {
+    $output->writeln('<error>Usage: php bin/show-diagnostics <trip_id></error>');
+    exit(1);
+}
+
+$tripId = (int)$argv[1];
+
+$trip = $em->getRepository(Trip::class)->find($tripId);
+
+if (!$trip) {
+    $output->writeln("<error>Trip #{$tripId} not found</error>");
+    exit(1);
+}
+
+$results = $trip->getAnalysisResults();
+
+if (!$results) {
+    $output->writeln("<error>No diagnostic results found for Trip #{$tripId}</error>");
+    exit(1);
+}
+
+$output->writeln('');
+$output->writeln("🔍 <info>Diagnostic Results - Trip #{$tripId}</info>");
+$output->writeln('======================================================================');
+$output->writeln("   Session Date: {$trip->getSessionDate()->format('Y-m-d H:i:s')}");
+$output->writeln("   Duration: " . gmdate('H:i:s', $trip->getDuration() ?? 0));
+$output->writeln("   Data Points: " . number_format($results['sample_count'] ?? 0));
+$output->writeln('======================================================================');
+$output->writeln('');
+
+// Catalyst Efficiency
+$output->writeln('🔧 <comment>Catalyst Efficiency</comment>');
+$catalyst = $results['catalyst_efficiency'] ?? [];
+$status = $catalyst['status'] ?? 'unknown';
+$score = $catalyst['score'] ?? null;
+
+$statusColor = match ($status) {
+    'excellent' => 'info',
+    'good' => 'info',
+    'marginal' => 'comment',
+    'poor' => 'error',
+    default => 'comment'
+};
+
+$output->writeln("   Status: <{$statusColor}>{$status}</{$statusColor}>");
+
+if ($score !== null) {
+    $output->writeln("   Score: {$score}/100");
+    if (isset($catalyst['efficiency_ratio'])) {
+        $output->writeln("   Efficiency Ratio: {$catalyst['efficiency_ratio']}");
+    }
+    if (isset($catalyst['upstream_voltage'])) {
+        $output->writeln("   Upstream O2: {$catalyst['upstream_voltage']}V");
+    }
+    if (isset($catalyst['downstream_voltage'])) {
+        $output->writeln("   Downstream O2: {$catalyst['downstream_voltage']}V");
+    }
+} else {
+    $message = $catalyst['message'] ?? 'N/A';
+    $output->writeln("   <comment>{$message}</comment>");
+}
+
+if (!empty($catalyst['messages'])) {
+    foreach ($catalyst['messages'] as $msg) {
+        $output->writeln("   ⚠️  {$msg}");
+    }
+}
+$output->writeln('');
+
+// Fuel Trim
+$output->writeln('⛽ <comment>Fuel Trim Analysis</comment>');
+$fuelTrim = $results['fuel_trim'] ?? [];
+$status = $fuelTrim['status'] ?? 'unknown';
+$score = $fuelTrim['score'] ?? null;
+
+$statusColor = match ($status) {
+    'excellent' => 'info',
+    'good' => 'info',
+    'marginal' => 'comment',
+    'poor' => 'error',
+    default => 'comment'
+};
+
+$output->writeln("   Status: <{$statusColor}>{$status}</{$statusColor}>");
+
+if ($score !== null) {
+    $output->writeln("   Score: {$score}/100");
+    if (isset($fuelTrim['short_term_avg'])) {
+        $output->writeln("   Short-Term Avg: {$fuelTrim['short_term_avg']}%");
+    }
+    if (isset($fuelTrim['long_term_avg'])) {
+        $output->writeln("   Long-Term Avg: {$fuelTrim['long_term_avg']}%");
+    }
+    if (isset($fuelTrim['total_trim'])) {
+        $output->writeln("   Total Trim: {$fuelTrim['total_trim']}%");
+    }
+    if (isset($fuelTrim['stft_stddev'])) {
+        $output->writeln("   STFT Stability: ±{$fuelTrim['stft_stddev']}%");
+    }
+} else {
+    $message = $fuelTrim['message'] ?? 'N/A';
+    $output->writeln("   <comment>{$message}</comment>");
+}
+
+if (!empty($fuelTrim['messages'])) {
+    foreach ($fuelTrim['messages'] as $msg) {
+        $output->writeln("   ⚠️  {$msg}");
+    }
+}
+$output->writeln('');
+
+// O2 Sensors
+$output->writeln('📊 <comment>O2 Sensor Health</comment>');
+$o2 = $results['o2_sensors'] ?? [];
+$status = $o2['status'] ?? 'unknown';
+$score = $o2['score'] ?? null;
+
+$statusColor = match ($status) {
+    'excellent' => 'info',
+    'good' => 'info',
+    'marginal' => 'comment',
+    'poor' => 'error',
+    default => 'comment'
+};
+
+$output->writeln("   Status: <{$statusColor}>{$status}</{$statusColor}>");
+
+if ($score !== null) {
+    $output->writeln("   Score: {$score}/100");
+    if (isset($o2['average_voltage'])) {
+        $output->writeln("   Average Voltage: {$o2['average_voltage']}V");
+    }
+    if (isset($o2['voltage_range'])) {
+        $output->writeln("   Voltage Range: {$o2['voltage_range']}V");
+    }
+} else {
+    $output->writeln("   <comment>Insufficient data for O2 sensor analysis</comment>");
+}
+
+if (!empty($o2['messages'])) {
+    foreach ($o2['messages'] as $msg) {
+        $output->writeln("   ⚠️  {$msg}");
+    }
+}
+$output->writeln('');
+
+// Engine Health
+$output->writeln('🔥 <comment>Engine Health</comment>');
+$engine = $results['engine_health'] ?? [];
+$score = $engine['score'] ?? null;
+
+if ($score !== null) {
+    $scoreColor = $score >= 80 ? 'info' : ($score >= 60 ? 'comment' : 'error');
+    $output->writeln("   Score: <{$scoreColor}>{$score}/100</{$scoreColor}>");
+
+    if (isset($engine['max_rpm'])) {
+        $output->writeln("   Max RPM: " . number_format($engine['max_rpm'], 0));
+    }
+    if (isset($engine['avg_load'])) {
+        $output->writeln("   Average Load: {$engine['avg_load']}%");
+    }
+    if (isset($engine['max_temp'])) {
+        $output->writeln("   Max Temperature: {$engine['max_temp']}°C");
+    }
+}
+
+if (!empty($engine['messages'])) {
+    foreach ($engine['messages'] as $msg) {
+        $output->writeln("   ⚠️  {$msg}");
+    }
+}
+
+$output->writeln('');
+$output->writeln('======================================================================');
+
+// Overall assessment
+$allScores = array_filter([
+    $catalyst['score'] ?? null,
+    $fuelTrim['score'] ?? null,
+    $o2['score'] ?? null,
+    $engine['score'] ?? null
+]);
+
+if (!empty($allScores)) {
+    $overallScore = array_sum($allScores) / count($allScores);
+    $overallColor = $overallScore >= 80 ? 'info' : ($overallScore >= 60 ? 'comment' : 'error');
+
+    $output->writeln("   Overall Health Score: <{$overallColor}>" . round($overallScore, 1) . "/100</{$overallColor}>");
+
+    if ($overallScore >= 80) {
+        $output->writeln('   ✅ <info>Vehicle is in good health</info>');
+    } elseif ($overallScore >= 60) {
+        $output->writeln('   ⚠️  <comment>Some issues detected, monitoring recommended</comment>');
+    } else {
+        $output->writeln('   ❌ <error>Vehicle needs attention</error>');
+    }
+}
+
+$output->writeln('======================================================================');
+$output->writeln('');

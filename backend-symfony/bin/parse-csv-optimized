@@ -1,0 +1,153 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * CheckEngine - Optimized CSV Parser (Production Mode)
+ *
+ * Uses APP_ENV=prod to disable debug middleware and reduce memory usage
+ * Recommended for parsing large CSV files (>5MB)
+ *
+ * Usage: php bin/parse-csv-optimized <csv_file_path>
+ */
+
+// Force production environment
+$_SERVER['APP_ENV'] = 'prod';
+$_SERVER['APP_DEBUG'] = '0';
+
+use App\Entity\User;
+use App\Entity\Vehicle;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+if ($argc < 2) {
+    echo "❌ Error: CSV file path required\n";
+    echo "Usage: php bin/parse-csv-optimized <csv_file_path>\n";
+    exit(1);
+}
+
+$csvPath = $argv[1];
+
+if (!file_exists($csvPath)) {
+    echo "❌ Error: File not found: {$csvPath}\n";
+    exit(1);
+}
+
+$kernel = new \App\Kernel($_SERVER['APP_ENV'], (bool) $_SERVER['APP_DEBUG']);
+$kernel->boot();
+$container = $kernel->getContainer();
+
+$em = $container->get('doctrine')->getManager();
+$parser = $container->get(\App\Service\OBD2CsvParser::class);
+
+echo "\n";
+echo "🚗 CheckEngine - Optimized CSV Parser\n";
+echo str_repeat('=', 70) . "\n";
+echo "   Mode: PRODUCTION (debug middleware disabled)\n";
+echo "   Memory limit: " . ini_get('memory_limit') . "\n";
+echo str_repeat('=', 70) . "\n\n";
+
+// Validate file
+echo "📋 Validating CSV file...\n";
+$validation = $parser->validateCsvFile($csvPath);
+
+if (!$validation['valid']) {
+    echo "❌ Validation failed:\n";
+    foreach ($validation['errors'] as $error) {
+        echo "   - {$error}\n";
+    }
+    exit(1);
+}
+
+echo "✅ Validation passed\n";
+echo "   Total columns: {$validation['total_columns']}\n";
+echo "   Recognized columns: {$validation['recognized_columns']}\n\n";
+
+// Get or create demo user
+$userRepo = $em->getRepository(User::class);
+$user = $userRepo->findOneBy(['email' => 'demo@checkengine.com']);
+
+if (!$user) {
+    $user = new User();
+    $user->setEmail('demo@checkengine.com');
+    $user->setPassword('demo');
+    $em->persist($user);
+    $em->flush();
+}
+
+// Get or create demo vehicle
+$vehicleRepo = $em->getRepository(Vehicle::class);
+$vehicle = $vehicleRepo->findOneBy(['nickname' => 'Optimized Parser Test']);
+
+if (!$vehicle) {
+    $modelRepo = $em->getRepository(\App\Entity\VehicleModel::class);
+    $model = $modelRepo->findOneBy([
+        'manufacturer' => 'Toyota',
+        'model' => 'Prius+',
+    ]);
+
+    if (!$model) {
+        $model = new \App\Entity\VehicleModel();
+        $model->setManufacturer('Toyota');
+        $model->setModel('Prius+');
+        $model->setYearStart(2012);
+        $model->setYearEnd(2021);
+        $model->setGeneration('XW30');
+        $model->setEngineCode('2ZR-FXE');
+        $model->setDisplacement('1.8');
+        $model->setFuelType('Hybrid');
+        $model->setHorsePower(136);
+        $model->setElectricMotorPower(82);
+        $model->setHybrid(true);
+        $em->persist($model);
+        $em->flush();
+    }
+
+    $vehicle = new Vehicle();
+    $vehicle->setOwner($user);
+    $vehicle->setModel($model);
+    $vehicle->setNickname('Optimized Parser Test');
+    $vehicle->setYear(2015);
+    $vehicle->setMileage(150000);
+    $em->persist($vehicle);
+    $em->flush();
+}
+
+echo "🚙 Using vehicle: {$vehicle->getNickname()}\n\n";
+
+// Parse with memory tracking
+echo "⚙️  Parsing CSV file (optimized mode)...\n";
+$memoryBefore = memory_get_usage(true);
+$startTime = microtime(true);
+
+try {
+    $trip = $parser->parseAndStore($csvPath, $user, $vehicle);
+
+    $duration = microtime(true) - $startTime;
+    $memoryAfter = memory_get_usage(true);
+    $memoryUsed = ($memoryAfter - $memoryBefore) / 1024 / 1024;
+    $memoryPeak = memory_get_peak_usage(true) / 1024 / 1024;
+
+    echo "\n";
+    echo "✅ Parsing complete!\n";
+    echo str_repeat('=', 70) . "\n";
+    echo "   Trip ID: {$trip->getId()}\n";
+    echo "   Status: {$trip->getStatus()}\n";
+    echo "   Duration: " . round($trip->getDuration() / 60, 1) . " minutes\n";
+    echo "   Data points: " . number_format($trip->getDataPointsCount() ?? 0) . "\n";
+    echo "\n";
+    echo "⚡ Performance Metrics:\n";
+    echo "   Parse time: " . round($duration, 2) . "s\n";
+    echo "   Memory used: " . round($memoryUsed, 2) . " MB\n";
+    echo "   Peak memory: " . round($memoryPeak, 2) . " MB\n";
+    echo "   Throughput: " . number_format(($trip->getDataPointsCount() ?? 0) / $duration) . " points/sec\n";
+    echo str_repeat('=', 70) . "\n";
+} catch (\Exception $e) {
+    echo "\n❌ Error: {$e->getMessage()}\n";
+    echo "   Stack trace:\n";
+    echo $e->getTraceAsString() . "\n";
+    exit(1);
+}
+
+echo "\n💡 Tip: Use this script for large files (>5MB) to minimize memory usage\n";
+echo "   Regular script: bin/demo-parse-csv (with debug info)\n";
+echo "   Optimized script: bin/parse-csv-optimized (production mode)\n\n";

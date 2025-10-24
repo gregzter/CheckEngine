@@ -1,4 +1,5 @@
 parameters:
+    upload_dir: '%kernel.project_dir%/var/uploads'
 
 services:
     _defaults:
@@ -16,6 +17,11 @@ services:
         resource: '../src/Controller/'
         tags: ['controller.service_arguments']
 
+    # Bind upload directory parameter
+    App\Controller\Api\TripController:
+        bind:
+            $uploadDir: '%upload_dir%'
+
     # Services publics pour scripts CLI et démo
     App\Service\OBD2ColumnMapper:
         public: true
@@ -27,4 +33,12 @@ services:
         public: true
 
     App\Service\TripDataService:
+        public: true
+
+    App\Service\Diagnostic\StreamingDiagnosticAnalyzer:
+        public: true
+
+    # Validator public pour tests CLI
+    Symfony\Component\Validator\Validator\ValidatorInterface:
+        alias: 'validator'
         public: true

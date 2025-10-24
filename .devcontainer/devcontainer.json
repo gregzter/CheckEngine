@@ -25,6 +25,12 @@
         "whatwedo.twig",
         "TheNouillet.symfony-vscode",
         
+        // Coverage Gutters - Visualisation de la couverture de code ligne par ligne
+        "ryanluker.vscode-coverage-gutters",
+        
+        // Test Coverage Explorer - Vue en arbre avec %
+        "wmejia-extensions.test-coverage-explorer",
+        
         // Python
         "ms-python.python",
         "ms-python.vscode-pylance",
@@ -63,7 +69,23 @@
         },
         "[vue]": {
           "editor.defaultFormatter": "Vue.volar"
-        }
+        },
+        
+        // Coverage Gutters Configuration
+        "coverage-gutters.coverageFileNames": [
+          "backend-symfony/coverage/clover.xml",
+          "lcov.info",
+          "cov.xml",
+          "coverage.xml",
+          "jacoco.xml"
+        ],
+        "coverage-gutters.showLineCoverage": true,
+        "coverage-gutters.showRulerCoverage": true,
+        "coverage-gutters.coverageBaseDir": "**",
+        "coverage-gutters.highlightdark": "rgba(50, 150, 50, 0.3)",
+        "coverage-gutters.highlightlight": "rgba(50, 200, 50, 0.3)",
+        "coverage-gutters.partialHighlightDark": "rgba(200, 150, 50, 0.3)",
+        "coverage-gutters.noHighlightDark": "rgba(200, 50, 50, 0.2)"
       }
     }
   },

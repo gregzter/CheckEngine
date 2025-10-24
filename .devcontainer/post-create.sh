@@ -5,7 +5,12 @@ echo "🔧 Fixing permissions..."
 sudo chown -R www-data:www-data /workspace/backend-symfony/vendor 2>/dev/null || true
 sudo chown -R www-data:www-data /workspace/backend-symfony/var 2>/dev/null || true
 
-echo "🔐 Configuring Git safe directory..."
+echo "� Installing PCOV for code coverage..."
+sudo apk add --no-cache pcre-dev $PHPIZE_DEPS 2>/dev/null || true
+sudo pecl install pcov 2>/dev/null || true
+sudo docker-php-ext-enable pcov 2>/dev/null || true
+
+echo "�🔐 Configuring Git safe directory..."
 git config --global --add safe.directory /workspace
 git config --global --add safe.directory '*'
 

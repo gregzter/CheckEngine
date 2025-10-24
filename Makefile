@@ -81,6 +81,22 @@ test-python: ## Run Python tests
 
 test: test-symfony test-python ## Run all tests
 
+coverage: ## Generate code coverage report (HTML + XML)
+	@echo "${GREEN}📊 Generating code coverage...${RESET}"
+	docker-compose exec symfony php -d pcov.enabled=1 -d pcov.directory=. vendor/bin/phpunit --coverage-text --coverage-clover=coverage/clover.xml --coverage-html=coverage/html
+	@echo "${GREEN}✅ Coverage report generated!${RESET}"
+	@echo "HTML Report: backend-symfony/coverage/html/index.html"
+	@echo "XML Report:  backend-symfony/coverage/clover.xml"
+
+coverage-text: ## Show code coverage in terminal
+	@echo "${GREEN}📊 Generating code coverage (text only)...${RESET}"
+	docker-compose exec symfony php -d pcov.enabled=1 -d pcov.directory=. vendor/bin/phpunit --coverage-text
+
+coverage-html: ## Generate HTML coverage report only
+	@echo "${GREEN}📊 Generating HTML coverage report...${RESET}"
+	docker-compose exec symfony php -d pcov.enabled=1 -d pcov.directory=. vendor/bin/phpunit --coverage-html=coverage/html
+	@echo "${GREEN}✅ HTML report generated: backend-symfony/coverage/html/index.html${RESET}"
+
 format-python: ## Format Python code
 	docker-compose exec python-api black .
 	docker-compose exec python-api isort .
