@@ -10,6 +10,8 @@
 /backend-symfony/.env.*.local
 /backend-symfony/public/bundles/
 /backend-symfony/public/uploads/
+/backend-symfony/.phpunit.cache/
+/backend-symfony/coverage/
 
 # ===== PYTHON BACKEND =====
 /backend-python/__pycache__/
@@ -58,6 +60,12 @@ desktop.ini
 /archive/
 *.tmp
 *.bak
+
+# ===== CODE COVERAGE =====
+clover.xml
+coverage.xml
+**/coverage/
+**/.phpunit.cache/
 
 # ===== GRAPHIQUES GÉNÉRÉS =====
 *.png
