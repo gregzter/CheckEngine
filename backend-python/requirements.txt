@@ -15,7 +15,7 @@ sqlalchemy[asyncio]==2.0.25
 psycopg2-binary==2.9.9
 
 # Data processing (from our existing work)
-pandas==2.2.0
+pandas==2.3.3
 numpy==1.26.3
 scipy==1.12.0
 
