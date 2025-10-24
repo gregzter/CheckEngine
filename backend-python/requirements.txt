@@ -11,7 +11,7 @@ pydantic-settings==2.1.0
 
 # Database
 asyncpg==0.29.0
-sqlalchemy[asyncio]==2.0.25
+sqlalchemy[asyncio]==2.0.44
 psycopg2-binary==2.9.9
 
 # Data processing (from our existing work)
