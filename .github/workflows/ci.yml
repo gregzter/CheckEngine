@@ -56,11 +56,11 @@ jobs:
 
       - name: 🗄️ Setup database
         run: |
+          cp .env .env.test.local
+          echo "DATABASE_URL=postgresql://checkengine:checkengine_password@localhost:5432/checkengine_test?serverVersion=16&charset=utf8" >> .env.test.local
           php bin/console doctrine:database:create --if-not-exists --env=test
           php bin/console doctrine:schema:create --env=test
         working-directory: backend-symfony
-        env:
-          DATABASE_URL: postgresql://checkengine:checkengine_password@localhost:5432/checkengine_test?serverVersion=16&charset=utf8
 
       - name: 🧪 Run PHPUnit tests with coverage
         run: |
@@ -70,8 +70,6 @@ jobs:
             --coverage-html=coverage/html \
             --log-junit=coverage/junit.xml
         working-directory: backend-symfony
-        env:
-          DATABASE_URL: postgresql://checkengine:checkengine_password@localhost:5432/checkengine_test?serverVersion=16&charset=utf8
 
       - name: 📊 Generate coverage badge
         uses: cicirello/jacoco-badge-generator@v2
