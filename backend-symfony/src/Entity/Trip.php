@@ -257,7 +257,7 @@ class Trip
     {
         if (!$this->dataPoints->contains($dataPoint)) {
             $this->dataPoints->add($dataPoint);
-            $dataPoint->setTrip($this);
+            $dataPoint->setTripId($this->id);
         }
 
         return $this;
@@ -265,11 +265,7 @@ class Trip
 
     public function removeDataPoint(TripData $dataPoint): static
     {
-        if ($this->dataPoints->removeElement($dataPoint)) {
-            if ($dataPoint->getTrip() === $this) {
-                $dataPoint->setTrip(null);
-            }
-        }
+        $this->dataPoints->removeElement($dataPoint);
 
         return $this;
     }

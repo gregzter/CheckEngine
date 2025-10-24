@@ -2,11 +2,18 @@
 
 > Advanced OBD2 data analysis platform for vehicle diagnostics with focus on catalyst and oxygen sensor health monitoring.
 
+[![CI Tests](https://github.com/gregzter/CheckEngine/workflows/CI%20-%20Tests%20%26%20Coverage/badge.svg)](https://github.com/gregzter/CheckEngine/actions/workflows/ci.yml)
+[![Security](https://github.com/gregzter/CheckEngine/workflows/Security%20Analysis/badge.svg)](https://github.com/gregzter/CheckEngine/actions/workflows/security.yml)
+[![Code Quality](https://github.com/gregzter/CheckEngine/workflows/Code%20Quality/badge.svg)](https://github.com/gregzter/CheckEngine/actions/workflows/code-quality.yml)
+[![Coverage](.github/badges/jacoco.svg)](https://github.com/gregzter/CheckEngine/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 [![Symfony](https://img.shields.io/badge/Symfony-7.3-black?logo=symfony)](https://symfony.com)
+[![PHP](https://img.shields.io/badge/PHP-8.3-777BB4?logo=php)](https://php.net)
 [![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)](https://python.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-blue?logo=postgresql)](https://postgresql.org)
 [![Vue.js](https://img.shields.io/badge/Vue.js-3-green?logo=vue.js)](https://vuejs.org)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)](https://docker.com)
 
 ## 📋 Table des matières
 

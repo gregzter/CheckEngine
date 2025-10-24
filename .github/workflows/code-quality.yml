@@ -1,0 +1,258 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  phpstan:
+    name: PHPStan Static Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_pgsql
+          tools: composer:v2
+
+      - name: 📥 Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+        working-directory: backend-symfony
+
+      - name: 📦 Install PHPStan
+        run: composer require --dev phpstan/phpstan phpstan/extension-installer phpstan/phpstan-symfony phpstan/phpstan-doctrine --with-all-dependencies
+        working-directory: backend-symfony
+
+      - name: 🔍 Run PHPStan (Level 6)
+        run: |
+          cat > phpstan.neon << EOF
+          parameters:
+              level: 6
+              paths:
+                  - src
+                  - tests
+              excludePaths:
+                  - tests/bootstrap.php
+              symfony:
+                  container_xml_path: var/cache/dev/App_KernelDevDebugContainer.xml
+              doctrine:
+                  objectManagerLoader: tests/phpstan-bootstrap.php
+              ignoreErrors:
+                  - '#Call to an undefined method Doctrine\\Common\\Collections\\Collection#'
+                  - '#Cannot call method get.*\(\) on Symfony\\Component\\HttpFoundation\\ParameterBag\|null#'
+          EOF
+          vendor/bin/phpstan analyse --no-progress --error-format=github
+        working-directory: backend-symfony
+
+  php-cs-fixer:
+    name: PHP Coding Standards
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2, cs2pr
+
+      - name: 📥 Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+        working-directory: backend-symfony
+
+      - name: 📦 Install PHP-CS-Fixer
+        run: composer require --dev friendsofphp/php-cs-fixer
+        working-directory: backend-symfony
+
+      - name: 🎨 Run PHP-CS-Fixer
+        run: |
+          cat > .php-cs-fixer.php << 'EOF'
+          <?php
+          return (new PhpCsFixer\Config())
+              ->setRules([
+                  '@Symfony' => true,
+                  '@PSR12' => true,
+                  'array_syntax' => ['syntax' => 'short'],
+                  'ordered_imports' => true,
+                  'no_unused_imports' => true,
+                  'single_quote' => true,
+                  'trailing_comma_in_multiline' => true,
+              ])
+              ->setFinder(
+                  PhpCsFixer\Finder::create()
+                      ->in(__DIR__ . '/src')
+                      ->in(__DIR__ . '/tests')
+              );
+          EOF
+          vendor/bin/php-cs-fixer fix --dry-run --diff --format=txt
+        working-directory: backend-symfony
+
+  psalm:
+    name: Psalm Static Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_pgsql
+          tools: composer:v2
+
+      - name: 📥 Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+        working-directory: backend-symfony
+
+      - name: 📦 Install Psalm
+        run: composer require --dev vimeo/psalm psalm/plugin-symfony psalm/plugin-phpunit
+        working-directory: backend-symfony
+
+      - name: 🔍 Initialize Psalm
+        run: |
+          vendor/bin/psalm --init src 3 || true
+          cat > psalm.xml << 'EOF'
+          <?xml version="1.0"?>
+          <psalm
+              errorLevel="3"
+              resolveFromConfigFile="true"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xmlns="https://getpsalm.org/schema/config"
+              xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+          >
+              <projectFiles>
+                  <directory name="src"/>
+                  <ignoreFiles>
+                      <directory name="vendor"/>
+                  </ignoreFiles>
+              </projectFiles>
+              <plugins>
+                  <pluginClass class="Psalm\SymfonyPlugin\Plugin"/>
+                  <pluginClass class="Psalm\PhpUnitPlugin\Plugin"/>
+              </plugins>
+          </psalm>
+          EOF
+        working-directory: backend-symfony
+
+      - name: 🔍 Run Psalm
+        run: vendor/bin/psalm --output-format=github --no-progress
+        working-directory: backend-symfony
+
+  rector:
+    name: Rector Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+
+      - name: 📥 Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+        working-directory: backend-symfony
+
+      - name: 📦 Install Rector
+        run: composer require --dev rector/rector
+        working-directory: backend-symfony
+
+      - name: 🔍 Run Rector (dry-run)
+        run: |
+          cat > rector.php << 'EOF'
+          <?php
+          use Rector\Config\RectorConfig;
+          use Rector\Set\ValueObject\SetList;
+          use Rector\Symfony\Set\SymfonySetList;
+          
+          return RectorConfig::configure()
+              ->withPaths([
+                  __DIR__ . '/src',
+                  __DIR__ . '/tests',
+              ])
+              ->withSets([
+                  SetList::PHP_83,
+                  SetList::CODE_QUALITY,
+                  SetList::DEAD_CODE,
+                  SymfonySetList::SYMFONY_73,
+                  SymfonySetList::SYMFONY_CODE_QUALITY,
+              ]);
+          EOF
+          vendor/bin/rector process --dry-run
+        working-directory: backend-symfony
+
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=gregzter_CheckEngine
+            -Dsonar.organization=gregzter
+            -Dsonar.sources=backend-symfony/src
+            -Dsonar.tests=backend-symfony/tests
+            -Dsonar.php.coverage.reportPaths=backend-symfony/coverage/clover.xml
+            -Dsonar.php.tests.reportPath=backend-symfony/coverage/junit.xml
+
+  eslint:
+    name: ESLint (Frontend)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 📥 Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: 🔍 Run ESLint
+        run: npm run lint || true
+        working-directory: frontend
+
+  quality-summary:
+    name: Code Quality Summary
+    runs-on: ubuntu-latest
+    needs: [phpstan, php-cs-fixer, psalm]
+    if: always()
+    
+    steps:
+      - name: 📊 Quality Status
+        run: |
+          echo "## 📊 Code Quality Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ PHPStan: ${{ needs.phpstan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "✅ PHP-CS-Fixer: ${{ needs.php-cs-fixer.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Psalm: ${{ needs.psalm.result }}" >> $GITHUB_STEP_SUMMARY

@@ -8,9 +8,10 @@ use App\Message\ParseCsvMessage;
 use App\Service\OBD2CsvParser;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+// use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-#[AsMessageHandler]
+// TODO: Installer symfony/messenger pour activer cette fonctionnalité
+// #[AsMessageHandler]
 class ParseCsvHandler
 {
     public function __construct(

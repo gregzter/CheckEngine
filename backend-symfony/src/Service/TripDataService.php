@@ -134,7 +134,7 @@ class TripDataService
 
         if (!empty($pidNames)) {
             $qb->andWhere('pid_name IN (:pidNames)')
-                ->setParameter('pidNames', $pidNames, Connection::PARAM_STR_ARRAY);
+                ->setParameter('pidNames', $pidNames, \Doctrine\DBAL\ArrayParameterType::STRING);
         }
 
         if ($startTime) {
