@@ -100,9 +100,12 @@ cd CheckEngine
 
 **Le DevContainer configure automatiquement :**
 - ✅ Symfony 7.3
-- ✅ Python 3.12
+- ✅ Python 3.12 (avec environnement virtuel)
 - ✅ PostgreSQL 17
 - ✅ Toutes les extensions VS Code nécessaires
+
+> 📘 **Note Python** : Un environnement virtuel est créé automatiquement dans `/workspace/backend-python/venv`.  
+> Voir [PYTHON_VENV_SETUP.md](PYTHON_VENV_SETUP.md) pour plus de détails.
 
 ### 3. OU Installation manuelle
 
@@ -119,6 +122,9 @@ docker-compose exec symfony php bin/console doctrine:migrations:migrate
 
 # Installer dépendances Python
 docker-compose exec python-api pip install -r requirements.txt
+
+# OU en dev container avec venv (recommandé)
+# cd /workspace/backend-python && source venv/bin/activate && pip install -r requirements.txt
 
 # Installer dépendances Frontend
 docker-compose exec frontend pnpm install
